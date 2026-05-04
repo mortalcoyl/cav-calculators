@@ -599,9 +599,9 @@ function LandingPage({ onSelectCalculator }) {
 const calculators = [
   { id: "rent-vs-buy", name: "Renting vs. Buying", subtitle: "Should I rent or buy?", shortName: "Rent vs. Buy", description: "Use the calculator to help you decide whether renting or buying a property is a better decision. Inputs include real estate values, rental values, as well as inflation, maintenance, and 30 year index investment projections.", icon: HomeIcon, component: RentVsBuyCalculator },
   { id: "rental-property-2", name: "Rental Property Eval", subtitle: "Should I buy a property or invest the money?", shortName: "Rental Property Eval", description: "Use this calculator to decide if a rental property will be more profitable vs. a simple market investment over time. Inputs include real estate values, rental income, inflation, maintenance, and 30 year index investment projections.", icon: BuildingIcon, component: RentalPropertyCalculator },
+  { id: "home-value", name: "Home Value vs. Market Investment", subtitle: "Did I make money buying and selling my house?", shortName: "Home Value", description: "Use this calculator to understand if you made or lost money buying a property vs. investing in the market.", icon: ScaleIcon, component: HomeValueCalculator },
   { id: "auto-cost", name: "Auto Cost Calculator", subtitle: "Should I buy new or used?", shortName: "Auto Cost", description: "Use this calculator to compare the estimated cost of buying a new car versus a used car over time.", icon: CarIcon, component: AutoCostCalculator },
   { id: "bat", name: "Bring a Trailer Decision", subtitle: "Should I buy this car from Bring a Trailer?", shortName: "BaT", description: "A simple decision page for Bring a Trailer purchases.", icon: CarIcon, component: BatDecisionPage },
-  { id: "home-value", name: "Home Value vs. Market Investment", subtitle: "Did I make money buying and selling my house?", shortName: "Home Value", description: "Use this calculator to understand if you made or lost money buying a property vs. investing in the market.", icon: ScaleIcon, component: HomeValueCalculator },
 ];
 
 const calculatorRouteMap = {
