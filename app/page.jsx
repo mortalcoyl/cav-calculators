@@ -1,9 +1,36 @@
 import CombinedRealEstateCalculatorsPreview from '../components/CombinedRealEstateCalculatorsPreview';
+import JsonLd from '../components/JsonLd';
+import { socialMetadata } from './seo';
+
+const title = "Financial Calculators for Real Estate, Cars, and Investing";
+const description = "Use free planning calculators to compare renting vs. buying, rental property returns, home value vs. market investing, new vs. used car costs, and Bring a Trailer decisions.";
 
 export const metadata = {
-  title: "Real Estate Calculators",
+  title,
+  description,
+  ...socialMetadata(title, description),
 };
 
 export default function Page() {
-  return <CombinedRealEstateCalculatorsPreview initialCalculator="landing" />;
+  return (
+    <>
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "Financial Calculators",
+          description: metadata.description,
+          isAccessibleForFree: true,
+          hasPart: [
+            { "@type": "WebApplication", name: "Rent vs. Buy Calculator", applicationCategory: "FinanceApplication" },
+            { "@type": "WebApplication", name: "Rental Property vs. Market Investment Calculator", applicationCategory: "FinanceApplication" },
+            { "@type": "WebApplication", name: "Home Value vs. Market Investment Calculator", applicationCategory: "FinanceApplication" },
+            { "@type": "WebApplication", name: "New Car vs. Used Car vs. Leased Car Calculator", applicationCategory: "FinanceApplication" },
+            { "@type": "WebApplication", name: "Bring a Trailer Decision Calculator", applicationCategory: "FinanceApplication" },
+          ],
+        }}
+      />
+      <CombinedRealEstateCalculatorsPreview initialCalculator="landing" />
+    </>
+  );
 }
