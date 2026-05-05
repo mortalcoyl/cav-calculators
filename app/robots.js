@@ -12,6 +12,10 @@ export default function robots() {
         allow: "/",
       },
       {
+        userAgent: "Facebot",
+        allow: "/",
+      },
+      {
         userAgent: "LinkedInBot",
         allow: "/",
       },
