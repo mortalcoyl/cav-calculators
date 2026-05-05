@@ -501,96 +501,36 @@ function HomeValueCalculator() {
   const winnerDetail = result.winner === "House" ? `by ${formatMoney(result.gap)} more than market investing.` : `by ${formatMoney(result.gap)} more than the house.`;
   return <CalculatorFrame title="Home Value vs. Market Investment Calculator" description="Compare buying a home against putting the same starting cash and monthly savings into the market."><div className="space-y-4"><div className="grid gap-4 md:grid-cols-3"><SmallStat label="Winner" value={`${result.winner} wins`} detail={winnerDetail} tone={result.winner === "House" ? "green" : "blue"} /><SmallStat label="Home Value Result" value={formatCompactMoney(result.houseResult)} tone="green" /><SmallStat label="Market Investment Result" value={formatCompactMoney(result.marketResult)} tone="blue" /></div><div className="grid items-stretch gap-5 xl:grid-cols-[430px_1fr]"><Card><SectionTitle icon={ScaleIcon} title="Main Assumptions" subtitle="Home price, expected sale price, financing, and hold period." /><div className="space-y-4"><MoneyInput label="Home price" value={homePrice} onChange={setHomePrice} max={5000000} step={10000} /><MoneyInput label="Sale price" value={salePrice} onChange={setSalePrice} max={8000000} step={10000} helperText={`Implied appreciation: ${formatPercent(result.impliedAnnualAppreciation)} / year`} /><PercentInput label="Down payment" value={downPaymentPct} onChange={setDownPaymentPct} min={0} max={50} helperText={`${formatMoney(result.downPayment)} cash into property`} /><PercentInput label="Mortgage rate" value={rate} onChange={setRate} min={0} max={10} helperText={`Monthly mortgage = ${formatMoney(result.mortgage)}`} /><RangeInput label="Years held" value={yearsHeld} onChange={setYearsHeld} min={1} max={30} suffix="yrs" /><RangeInput label="Loan term" value={loanTerm} onChange={setLoanTerm} min={10} max={30} step={5} suffix="yrs" /></div></Card><Card className="flex min-h-[560px] flex-col"><SectionTitle icon={BarChartIcon} title="Home value vs. market investment" subtitle={`${result.winner} is ahead by ${formatMoney(result.gap)} after ${yearsHeld} years.`} /><div className="min-h-[360px] flex-1"><ResponsiveContainer width="100%" height="100%"><LineChart data={result.rows}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="year" tickLine={false} axisLine={false} /><YAxis tickFormatter={formatCompactMoney} tickLine={false} axisLine={false} width={72} /><Tooltip content={<ChartTooltip />} /><Legend /><Line type="monotone" dataKey="homeValueResult" name="Home Value Result" stroke="#059669" strokeWidth={3} dot={false} /><Line type="monotone" dataKey="marketInvestmentResult" name="Market Investment Result" stroke="#0284c7" strokeWidth={3} dot={false} /></LineChart></ResponsiveContainer></div></Card></div><div className="grid gap-5 lg:grid-cols-2"><Card><SectionTitle icon={DollarIcon} title="Transaction & Ownership Costs" subtitle="Closing costs, sale costs, maintenance, taxes, insurance, and improvements." /><div className="grid gap-4 md:grid-cols-2"><PercentInput label="Buying closing costs" value={closingCostPct} onChange={setClosingCostPct} min={0} max={8} helperText={formatMoney(result.buyingClosingCosts)} /><PercentInput label="Selling costs" value={sellingCostPct} onChange={setSellingCostPct} min={0} max={10} helperText={formatMoney(result.sellingCosts)} /><PercentInput label="Maintenance" value={maintenancePct} onChange={setMaintenancePct} min={0} max={4} helperText={`${formatMoney(result.monthlyMaintenance)} / month`} /><PercentInput label="Property taxes" value={propertyTaxPct} onChange={setPropertyTaxPct} min={0} max={3} helperText={`${formatMoney(result.monthlyPropertyTax)} / month`} /><MoneyInput label="Annual insurance" value={insuranceAnnual} onChange={setInsuranceAnnual} max={20000} step={100} helperText={`${formatMoney(result.monthlyInsurance)} / month`} /><MoneyInput label="Renovations / improvements" value={renovations} onChange={setRenovations} max={1000000} step={5000} /></div></Card><Card><SectionTitle icon={TrendingUpIcon} title="Rent & Market Investment Alternative" subtitle="Rent avoided by owning and alternate market return assumptions." /><div className="grid gap-4 md:grid-cols-2"><MoneyInput label="Monthly rent if you did not own" value={monthlyRent} onChange={setMonthlyRent} max={20000} step={100} /><PercentInput label="Annual rent inflation" value={rentInflation} onChange={setRentInflation} min={0} max={8} /><div className="md:col-span-2"><MarketReturnPicker value={marketReturn} onChange={setMarketReturn} /></div></div></Card></div><OwnershipCostSummary title="Ownership cost summary" subtitle="Today's monthly cash waterfall for the home value path." startingLabel="Monthly rent if you did not own" startingAmount={monthlyRent} items={[{ label: "Less monthly mortgage", amount: result.mortgage }, { label: "Less property taxes", amount: result.monthlyPropertyTax }, { label: "Less insurance", amount: result.monthlyInsurance }, { label: "Less maintenance", amount: result.monthlyMaintenance }]} totalLabel="Monthly ownership cost" totalAmount={result.monthlyOwnershipCost} remainingLabel="Buyer surplus vs. renting today" remainingAmount={Math.max(0, monthlyRent - result.monthlyOwnershipCost)} note="This is a current-month comparison." /><Card><SectionTitle icon={BarChartIcon} title="Year-by-Year Comparison" subtitle="This shows estimated equity after sale versus the rent-and-invest alternative each year." /><div className="mt-2 max-h-[520px] overflow-y-auto rounded-2xl border border-neutral-200"><table className="w-full table-fixed border-separate border-spacing-0 text-left text-xs leading-tight"><thead className="sticky top-0 bg-white"><tr className="uppercase tracking-wide text-neutral-500">{HOME_VALUE_YEAR_TABLE_COLUMNS.map((column) => <th key={column} className="break-words border-b border-neutral-200 px-3 py-2">{column}</th>)}</tr></thead><tbody>{result.rows.map((row) => <tr key={row.year}><td className="border-b border-neutral-100 px-3 py-2 font-semibold">{row.year}</td><td>{formatCompactMoney(row.homeValue)}</td><td>{formatCompactMoney(row.mortgageBalance)}</td><td>{formatCompactMoney(row.equityAfterSale)}</td><td>{formatCompactMoney(row.annualRentAvoided)}</td><td>{formatCompactMoney(row.marketInvestmentResult)}</td><td>{formatCompactMoney(row.houseAdvantage)}</td></tr>)}</tbody></table></div></Card></div></CalculatorFrame>;
 }
-function BatDecisionPage() {
-  const [batPrice, setBatPrice] = useState(5000);
-  const [moneyAvailable, setMoneyAvailable] = useState(100000);
-  const yesSize = 48 + ((batPrice - 5000) / (2500000 - 5000)) * 220;
-  const remainingMoney = moneyAvailable - batPrice;
-
-  return (
-    <CalculatorFrame title="Bring a Trailer Decision" description="A highly sophisticated decision model for Bring a Trailer purchases.">
-      <Card className="mx-auto max-w-3xl text-center">
-        <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">
-          Should I buy this car from Bring a Trailer?
-        </h2>
-        <div className="mx-auto mt-8 grid max-w-xl gap-5 text-left md:grid-cols-2">
-          <MoneyInput
-            label="Price of vehicle"
-            value={batPrice}
-            onChange={setBatPrice}
-            min={5000}
-            max={2500000}
-            step={5000}
-            helperText="As the price goes up, the answer gets bigger."
-          />
-          <MoneyInput
-            label="Money available to spend"
-            value={moneyAvailable}
-            onChange={setMoneyAvailable}
-            min={0}
-            max={2500000}
-            step={5000}
-            helperText="The amount you have available for this purchase."
-          />
-        </div>
-        <div className="mx-auto mt-6 max-w-xl rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-left">
-          <div className="flex items-center justify-between gap-4 text-sm">
-            <span className="text-neutral-600">Money available to spend</span>
-            <strong className="text-neutral-950">{formatMoney(moneyAvailable)}</strong>
-          </div>
-          <div className="mt-3 flex items-center justify-between gap-4 border-t border-neutral-200 pt-3 text-sm">
-            <span className="text-neutral-600">Less price of vehicle</span>
-            <strong className="text-neutral-950">-{formatMoney(batPrice)}</strong>
-          </div>
-          <div className={`mt-3 flex items-center justify-between gap-4 border-t border-neutral-200 pt-3 text-base font-bold ${remainingMoney >= 0 ? "text-emerald-800" : "text-amber-800"}`}>
-            <span>Result</span>
-            <span>{formatMoney(remainingMoney)}</span>
-          </div>
-        </div>
-        <div className="mt-10 flex min-h-[260px] items-center justify-center overflow-hidden rounded-3xl bg-neutral-50 px-6 py-10">
-          <div className="font-black leading-none tracking-tight text-neutral-950" style={{ fontSize: `${yesSize}px` }}>
-            Yes
-          </div>
-        </div>
-      </Card>
-    </CalculatorFrame>
-  );
-}
-
 function LandingPage({ onSelectCalculator }) {
-  const topRowCalculators = calculators.filter((calculator) => ["rent-vs-buy", "rental-property-2", "home-value"].includes(calculator.id));
-  const bottomRowCalculators = calculators.filter((calculator) => ["auto-cost", "bat"].includes(calculator.id));
-
   const renderCard = (calculator) => {
     const Icon = calculator.icon;
     return (
       <a
         key={calculator.id}
         href={calculatorRouteMap[calculator.id]}
-        className="group flex w-full max-w-[380px] flex-col rounded-3xl border border-neutral-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-neutral-400 hover:shadow-md sm:w-[360px] lg:w-[380px]"
+        className="group flex min-h-[330px] w-full flex-col rounded-3xl border border-neutral-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-neutral-400 hover:shadow-md"
       >
         <div className="mb-5 flex h-12 items-start">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-neutral-100 leading-none transition group-hover:bg-neutral-950 group-hover:text-white">
             <Icon className="block h-5 w-5" />
           </div>
         </div>
-        <div className="flex min-h-[76px] flex-col items-start">
-          <h2 className="text-lg font-semibold leading-tight tracking-tight text-neutral-950">{calculator.name}</h2>
-          <p className="mt-3 text-sm font-semibold leading-5 text-neutral-700">{calculator.subtitle}</p>
+        <div className="flex min-h-[96px] flex-col items-start">
+          <h2 className="min-h-[44px] text-lg font-semibold leading-tight tracking-tight text-neutral-950">{calculator.name}</h2>
+          <div className="my-3 h-px w-full bg-neutral-200" />
+          <p className="text-sm font-semibold leading-5 text-neutral-700">{calculator.subtitle}</p>
         </div>
-        <p className="mt-5 text-sm leading-6 text-neutral-600">{calculator.description}</p>
+        <p className="mt-5 text-xs leading-5 text-neutral-600">{calculator.description}</p>
+        <div className="min-h-8 flex-1" />
       </a>
     );
   };
 
   return (
     <motion.div key="landing-page" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
-      <section className="space-y-5">
-        <div className="flex flex-wrap justify-center gap-5">
-          {topRowCalculators.map(renderCard)}
-        </div>
-        <div className="flex flex-wrap justify-center gap-5">
-          {bottomRowCalculators.map(renderCard)}
+      <section>
+        <div className="mx-auto grid max-w-[380px] gap-5 md:max-w-[780px] md:grid-cols-2 min-[1440px]:max-w-none min-[1440px]:grid-cols-4">
+          {calculators.map(renderCard)}
         </div>
       </section>
     </motion.div>
@@ -601,7 +541,6 @@ const calculators = [
   { id: "rental-property-2", name: "Rental Property vs. Market Investment Calculator", subtitle: "Should I buy a property or invest the money?", shortName: "Rental vs. Market", description: "Use this calculator to decide if a rental property will be more profitable vs. a simple market investment over time. Inputs include real estate values, rental income, inflation, maintenance, and 30 year index investment projections.", icon: BuildingIcon, component: RentalPropertyCalculator },
   { id: "home-value", name: "Home Value vs. Market Investment Calculator", subtitle: "Did I make money buying and selling my house?", shortName: "Home vs. Market", description: "Use this calculator to understand if you made or lost money buying a property vs. investing in the market.", icon: ScaleIcon, component: HomeValueCalculator },
   { id: "auto-cost", name: "New Car vs. Used Car vs. Leased Car Calculator", subtitle: "Should I buy new or used?", shortName: "New/Used/Lease", description: "Use this calculator to compare the estimated cost of buying a new car versus a used car over time.", icon: CarIcon, component: AutoCostCalculator },
-  { id: "bat", name: "Bring a Trailer Decision", subtitle: "Should I buy this car from Bring a Trailer?", shortName: "BaT", description: "A simple decision page for Bring a Trailer purchases.", icon: CarIcon, component: BatDecisionPage },
 
 ];
 
@@ -609,7 +548,6 @@ const calculatorRouteMap = {
   "rent-vs-buy": "/rent-vs-buy",
   "rental-property-2": "/rental-property-eval",
   "auto-cost": "/auto-cost",
-  "bat": "/bat",
   "home-value": "/home-value-vs-market",
 };
 
@@ -622,7 +560,7 @@ const pageCopy = {
     ],
     sections: [
       { title: "Real estate tools", body: "Compare renting versus buying, evaluate a rental property, or measure a home purchase against a market investment alternative." },
-      { title: "Vehicle tools", body: "Estimate the cost of buying new, buying used, leasing, or deciding whether a Bring a Trailer purchase fits your available cash." },
+      { title: "Vehicle tools", body: "Estimate the cost of buying new, buying used, or leasing while comparing saved cash against a market investment alternative." },
     ],
   },
   "rent-vs-buy": {
@@ -669,23 +607,12 @@ const pageCopy = {
       { title: "What to verify", body: "Confirm real loan or lease quotes, insurance premiums, maintenance expectations, taxes, registration, mileage limits, residual values, and resale assumptions for the specific vehicle." },
     ],
   },
-  bat: {
-    title: "About this Bring a Trailer decision calculator",
-    body: [
-      "This Bring a Trailer decision calculator is a simple cash planning tool for a potential vehicle purchase. It compares the vehicle price against the money you have available so you can quickly see the remaining cash after purchase.",
-      "It is intentionally simple and does not estimate auction fees, shipping, taxes, registration, inspection, repairs, insurance, storage, financing, or future resale value.",
-    ],
-    sections: [
-      { title: "How to interpret the result", body: "A positive result means the entered purchase price is below the cash available. A negative result means the entered purchase price exceeds the available cash before considering other transaction costs." },
-      { title: "What to verify", body: "Before bidding, check auction fees, transport, taxes, registration, inspection costs, mechanical needs, insurance, and your total post-purchase cash cushion." },
-    ],
-  },
 };
 
 function SeoPageCopy({ pageId }) {
   const copy = pageCopy[pageId] || pageCopy.landing;
   return (
-    <section className="mt-24 border-t border-neutral-200 pt-4" aria-labelledby="calculator-page-copy-title">
+    <section className="mt-36 border-t border-neutral-200 pt-4" aria-labelledby="calculator-page-copy-title">
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
         <div>
           <h2 id="calculator-page-copy-title" className="text-base font-semibold tracking-tight text-neutral-950">{copy.title}</h2>
@@ -724,7 +651,7 @@ export default function CombinedRealEstateCalculatorsPreview({ initialCalculator
   return (
     <main className="min-h-screen bg-[#f7f7f5] px-4 py-6 text-neutral-950 sm:px-6 lg:px-8">
       <div className="mx-auto flex min-h-[calc(100vh-48px)] max-w-7xl flex-col">
-        <header className="mb-14 flex flex-col gap-5 border-b border-neutral-200 pb-6 lg:flex-row lg:items-start lg:justify-between"><div><button type="button" onClick={() => setActiveCalculator("landing")} className="text-left"><h1 className="text-[2.025rem] font-semibold leading-none tracking-tight text-neutral-950 sm:text-[2.25rem]">Financial Calculators</h1></button></div><nav className="hidden self-start lg:flex" aria-label="Calculator selector"><a href="/" className={activeCalculator === "landing" ? "flex items-center gap-2 rounded-xl bg-neutral-950 px-6 py-2 text-sm font-semibold text-white transition" : "flex items-center gap-2 rounded-xl px-6 py-2 text-sm font-semibold text-neutral-600 transition hover:bg-neutral-100 hover:text-neutral-950"}>Home</a>{calculators.map((calculator) => { const Icon = calculator.icon; const active = calculator.id === activeCalculator; return <a key={calculator.id} href={calculatorRouteMap[calculator.id]} className={active ? "flex items-center gap-2 rounded-xl bg-neutral-950 px-6 py-2 text-sm font-semibold text-white transition" : "flex items-center gap-2 rounded-xl px-6 py-2 text-sm font-semibold text-neutral-600 transition hover:bg-neutral-100 hover:text-neutral-950"}><Icon className="h-4 w-4" />{calculator.shortName}</a>; })}</nav><div className="relative lg:hidden"><button type="button" onClick={() => setMobileOpen((open) => !open)} className="flex w-full items-center justify-between rounded-2xl border border-neutral-200 bg-white p-4 text-left shadow-sm"><span><span className="block text-sm font-semibold">{selected?.name || "Real Estate Calculators"}</span><span className="mt-1 block text-xs text-neutral-500">Tap to switch calculators</span></span><ChevronDownIcon className="h-5 w-5 text-neutral-500" /></button>{mobileOpen && <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-lg"><button type="button" onClick={() => { setActiveCalculator("landing"); setMobileOpen(false); }} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm hover:bg-neutral-50"><CalculatorIcon className="h-4 w-4 text-neutral-500" /><span><span className="block font-semibold text-neutral-950">Real Estate Calculators</span><span className="block text-xs text-neutral-500">Landing page and calculator guide</span></span></button>{calculators.map((calculator) => { const Icon = calculator.icon; return <button key={calculator.id} type="button" onClick={() => { setActiveCalculator(calculator.id); setMobileOpen(false); }} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm hover:bg-neutral-50"><Icon className="h-4 w-4 text-neutral-500" /><span><span className="block font-semibold text-neutral-950">{calculator.name}</span><span className="block text-xs text-neutral-500">{calculator.description}</span></span></button>; })}</div>}</div></header>
+        <header className="mb-14 flex flex-col gap-5 border-b border-neutral-200 pb-6 lg:flex-row lg:items-start lg:justify-between"><div><a href="/" className="block text-left"><h1 className="text-[2.025rem] font-semibold leading-none tracking-tight text-neutral-950 sm:text-[2.25rem]">Financial Calculators</h1></a></div><nav className="hidden self-start lg:flex" aria-label="Calculator selector">{calculators.map((calculator) => { const Icon = calculator.icon; const active = calculator.id === activeCalculator; return <a key={calculator.id} href={calculatorRouteMap[calculator.id]} className={active ? "flex items-center gap-2 rounded-xl bg-neutral-950 px-6 py-2 text-sm font-semibold text-white transition" : "flex items-center gap-2 rounded-xl px-6 py-2 text-sm font-semibold text-neutral-600 transition hover:bg-neutral-100 hover:text-neutral-950"}><Icon className="h-4 w-4" />{calculator.shortName}</a>; })}</nav><div className="relative lg:hidden"><button type="button" onClick={() => setMobileOpen((open) => !open)} className="flex w-full items-center justify-between rounded-2xl border border-neutral-200 bg-white p-4 text-left shadow-sm"><span><span className="block text-sm font-semibold">{selected?.name || "Real Estate Calculators"}</span><span className="mt-1 block text-xs text-neutral-500">Tap to switch calculators</span></span><ChevronDownIcon className="h-5 w-5 text-neutral-500" /></button>{mobileOpen && <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-lg">{calculators.map((calculator) => { const Icon = calculator.icon; return <button key={calculator.id} type="button" onClick={() => { setActiveCalculator(calculator.id); setMobileOpen(false); }} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm hover:bg-neutral-50"><Icon className="h-4 w-4 text-neutral-500" /><span><span className="block font-semibold text-neutral-950">{calculator.name}</span><span className="block text-xs text-neutral-500">{calculator.description}</span></span></button>; })}</div>}</div></header>
         <div className="pb-10">
           {ActiveComponent ? <ActiveComponent /> : <LandingPage onSelectCalculator={setActiveCalculator} />}
           <SeoPageCopy pageId={activeCalculator} />
