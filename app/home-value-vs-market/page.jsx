@@ -8,7 +8,7 @@ const description = "Compare the estimated outcome of buying and selling a home 
 export const metadata = {
   title,
   description,
-  ...socialMetadata(title, description),
+  ...socialMetadata(title, description, "/home-value-vs-market"),
 };
 
 export default function Page() {

@@ -8,7 +8,7 @@ const description = "Compare estimated ownership costs for new cars, used cars, 
 export const metadata = {
   title,
   description,
-  ...socialMetadata(title, description),
+  ...socialMetadata(title, description, "/auto-cost"),
 };
 
 export default function Page() {

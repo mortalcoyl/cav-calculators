@@ -8,7 +8,7 @@ const description = "Evaluate a rental property against a market investment usin
 export const metadata = {
   title,
   description,
-  ...socialMetadata(title, description),
+  ...socialMetadata(title, description, "/rental-property-eval"),
 };
 
 export default function Page() {

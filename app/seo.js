@@ -6,11 +6,17 @@ const socialImage = {
   alt: "Financial Calculators for real estate, vehicle, and investment planning",
 };
 
-export function socialMetadata(title, description) {
+export function socialMetadata(title, description, path = "/") {
+  const url = path;
+
   return {
+    alternates: {
+      canonical: url,
+    },
     openGraph: {
       title,
       description,
+      url,
       siteName,
       type: "website",
       locale: "en_US",

@@ -8,7 +8,7 @@ const description = "Estimate whether renting or buying may be better based on h
 export const metadata = {
   title,
   description,
-  ...socialMetadata(title, description),
+  ...socialMetadata(title, description, "/rent-vs-buy"),
 };
 
 export default function Page() {

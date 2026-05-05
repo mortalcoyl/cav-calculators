@@ -8,7 +8,7 @@ const description = "Use free planning calculators to compare renting vs. buying
 export const metadata = {
   title,
   description,
-  ...socialMetadata(title, description),
+  ...socialMetadata(title, description, "/"),
 };
 
 export default function Page() {
