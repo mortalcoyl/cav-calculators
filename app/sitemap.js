@@ -8,6 +8,7 @@ export default function sitemap() {
     "/home-value-vs-market",
     "/auto-cost",
     "/college-savings",
+    "/generational-savings",
   ];
 
   return routes.map((route) => ({

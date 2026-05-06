@@ -71,7 +71,17 @@ const COLLEGE_SAVINGS_EXPORT_COLUMNS = [
   { header: "Combined Withdrawn", key: "combinedWithdrawn" },
   { header: "Combined Contributions", key: "combinedContributions" },
   { header: "Combined Interest", key: "combinedInterest" },
+  { header: "Yearly School Cost", key: "yearlySchoolCost" },
   { header: "Uncovered Shortfall", key: "shortfall" },
+];
+const GENERATIONAL_SAVINGS_EXPORT_COLUMNS = [
+  { header: "Year", key: "year" },
+  { header: "Child", key: "child" },
+  { header: "Starting Amount", key: "startingBalance" },
+  { header: "Contributions", key: "contributions" },
+  { header: "Earnings", key: "earnings" },
+  { header: "Milestone Expenses", key: "milestoneExpenses" },
+  { header: "Ending Balance", key: "endingBalance" },
 ];
 const SCHOOL_YEAR_OPTIONS = [
   { value: -1, label: "Pre-K" },
@@ -243,6 +253,7 @@ function DollarIcon({ className = "" }) { return <IconBase className={className}
 function BarChartIcon({ className = "" }) { return <IconBase className={className}><path d="M4 19V5" /><path d="M4 19h16" /><path d="M8 17v-5" /><path d="M12 17V8" /><path d="M16 17v-7" /></IconBase>; }
 function CarIcon({ className = "" }) { return <IconBase className={className}><path d="M5 17h14" /><path d="M6 17l1.5-6h9L18 17" /><path d="M8 11l1.2-3h5.6L16 11" /><path d="M7 17v2" /><path d="M17 17v2" /><path d="M8 15h.01" /><path d="M16 15h.01" /></IconBase>; }
 function GraduationIcon({ className = "" }) { return <IconBase className={className}><path d="M22 10 12 5 2 10l10 5 10-5Z" /><path d="M6 12v5c3 2 9 2 12 0v-5" /><path d="M22 10v6" /></IconBase>; }
+function GiftIcon({ className = "" }) { return <IconBase className={className}><path d="M20 12v9H4v-9" /><path d="M2 7h20v5H2z" /><path d="M12 22V7" /><path d="M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7Z" /><path d="M12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7Z" /></IconBase>; }
 function ChevronDownIcon({ className = "" }) { return <IconBase className={className}><path d="m6 9 6 6 6-6" /></IconBase>; }
 
 function Card({ children, className = "" }) { return <div className={`rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm ${className}`}>{children}</div>; }
@@ -271,7 +282,7 @@ function MarketReturnPicker({ value, onChange }) {
   return <div className="space-y-3"><PercentInput label="Alternate market return" value={value} onChange={onChange} min={MARKET_RETURN_RANGE.min} max={MARKET_RETURN_RANGE.max} helperText={activePreset ? `${activePreset.label} preset selected` : "Custom return"} /><div className="relative -mt-2 h-3"><span className="absolute top-0 h-3 w-px bg-neutral-500" style={{ left: `${MARKET_ZERO_PCT}%` }} /><span className="absolute top-2 -translate-x-1/2 text-[10px] font-semibold text-neutral-500" style={{ left: `${MARKET_ZERO_PCT}%` }}>0</span></div><div className="grid grid-cols-3 gap-2">{MARKET_RETURN_PRESETS.map((preset) => <button key={preset.id} type="button" onClick={() => onChange(preset.value)} className={`rounded-xl border px-3 py-2 text-center text-xs font-bold transition ${activePreset?.id === preset.id ? "border-neutral-950 bg-neutral-950 text-white" : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-400"}`}><span className="block">{preset.label}</span><span className="mt-0.5 block font-semibold">{formatPercent(preset.value)}</span></button>)}</div><p className="text-xs leading-5 text-neutral-500">{MARKET_RETURN_CAVEAT}</p></div>;
 }
 function SmallStat({ label, value, tone = "neutral", detail }) {
-  const toneClass = tone === "green" ? "border-emerald-200 bg-emerald-50" : tone === "blue" ? "border-sky-200 bg-sky-50" : tone === "amber" ? "border-amber-200 bg-amber-50" : "border-neutral-200 bg-neutral-50";
+  const toneClass = tone === "green" ? "border-emerald-200 bg-emerald-50" : tone === "blue" ? "border-sky-200 bg-sky-50" : tone === "amber" ? "border-amber-200 bg-amber-50" : tone === "red" ? "border-red-200 bg-red-50" : tone === "teal" ? "border-teal-200 bg-teal-50" : "border-neutral-200 bg-neutral-50";
   return <div className={`rounded-2xl border p-4 ${toneClass}`}><div className="text-xs font-medium uppercase tracking-wide text-neutral-500">{label}</div><div className="mt-2 text-xl font-bold text-neutral-950">{value}</div>{detail && <div className="mt-1 text-sm font-semibold leading-5 text-neutral-700">{detail}</div>}</div>;
 }
 function OwnershipCostSummary({ title, subtitle, startingLabel, startingAmount, items, totalLabel, totalAmount, remainingLabel, remainingAmount, note }) {
@@ -279,7 +290,8 @@ function OwnershipCostSummary({ title, subtitle, startingLabel, startingAmount, 
 }
 function ChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
-  return <div className="rounded-xl border border-neutral-200 bg-white p-3 shadow-sm"><div className="mb-2 text-xs font-semibold text-neutral-500">Year {label}</div>{payload.map((item) => { const color = item.color || item.stroke || "#171717"; return <div key={item.dataKey} className="flex items-center justify-between gap-6 text-sm"><span className="font-semibold" style={{ color }}>{item.name}</span><strong style={{ color }}>{formatCompactMoney(item.value)}</strong></div>; })}</div>;
+  const milestoneDetails = payload[0]?.payload?.milestoneDetails || [];
+  return <div className="rounded-xl border border-neutral-200 bg-white p-3 shadow-sm"><div className="mb-2 text-xs font-semibold text-neutral-500">Year {label}</div>{payload.map((item) => { const color = item.color || item.stroke || "#171717"; return <div key={item.dataKey} className="flex items-center justify-between gap-6 text-sm"><span className="font-semibold" style={{ color }}>{item.name}</span><strong style={{ color }}>{formatCompactMoney(item.value)}</strong></div>; })}{milestoneDetails.length > 0 && <div className="mt-3 border-t border-neutral-200 pt-2"><div className="mb-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">Milestones</div>{milestoneDetails.map((milestone, index) => <div key={`${milestone.label}-${index}`} className="flex items-center justify-between gap-6 text-sm"><span className="font-semibold text-fuchsia-700">{milestone.label}</span><strong className="text-fuchsia-700">{formatMoney(milestone.cost)}</strong></div>)}</div>}</div>;
 }
 function ExportMenu({ title, exportData }) {
   const [open, setOpen] = useState(false);
@@ -609,9 +621,10 @@ function calculateCollegeSavingsScenario({ children, startingAmount, monthlyCont
   });
   const horizonMonths = Math.max(12, ...childPlans.map((child) => child.finalMonth));
   const accounts = childPlans.map((child) => ({ ...child, balance: startingAmount, contributions: startingAmount, interest: 0, withdrawn: 0, shortfall: 0 }));
-  const rows = [{ year: 0, month: 0, combinedBalance: Math.round(startingAmount * accounts.length), combinedWithdrawn: 0, combinedContributions: Math.round(startingAmount * accounts.length), combinedInterest: 0, shortfall: 0, ...Object.fromEntries(accounts.map((account) => [account.name, Math.round(account.balance)])) }];
+  const rows = [{ year: 0, month: 0, combinedBalance: Math.round(startingAmount * accounts.length), combinedWithdrawn: 0, combinedContributions: Math.round(startingAmount * accounts.length), combinedInterest: 0, yearlySchoolCost: 0, shortfall: 0, ...Object.fromEntries(accounts.map((account) => [account.name, Math.round(account.balance)])), ...Object.fromEntries(accounts.map((account) => [`${account.name} School Cost`, 0])) }];
 
   for (let month = 1; month <= horizonMonths; month++) {
+    const schoolCosts = {};
     accounts.forEach((account) => {
       if (month <= account.finalMonth) {
         account.balance += monthlyContribution;
@@ -623,6 +636,7 @@ function calculateCollegeSavingsScenario({ children, startingAmount, monthlyCont
       const collegeYear = [0, 12, 24, 36].findIndex((offset) => month === account.firstJulyMonth + offset);
       if (collegeYear >= 0) {
         const inflatedCost = annualCollegeCost * safePow(1 + inflation / 100, month / 12);
+        schoolCosts[account.name] = inflatedCost;
         let remainingCost = inflatedCost;
         const ownWithdrawal = Math.min(account.balance, remainingCost);
         account.balance -= ownWithdrawal;
@@ -644,8 +658,9 @@ function calculateCollegeSavingsScenario({ children, startingAmount, monthlyCont
     const combinedWithdrawn = accounts.reduce((sum, account) => sum + account.withdrawn, 0);
     const combinedContributions = accounts.reduce((sum, account) => sum + account.contributions, 0);
     const combinedInterest = accounts.reduce((sum, account) => sum + account.interest, 0);
+    const yearlySchoolCost = Object.values(schoolCosts).reduce((sum, cost) => sum + cost, 0);
     const shortfall = accounts.reduce((sum, account) => sum + account.shortfall, 0);
-    rows.push({ year: Number((month / 12).toFixed(1)), month, combinedBalance: Math.round(combinedBalance), combinedWithdrawn: Math.round(combinedWithdrawn), combinedContributions: Math.round(combinedContributions), combinedInterest: Math.round(combinedInterest), shortfall: Math.round(shortfall), ...Object.fromEntries(accounts.map((account) => [account.name, Math.round(account.balance)])) });
+    rows.push({ year: Number((month / 12).toFixed(1)), month, combinedBalance: Math.round(combinedBalance), combinedWithdrawn: Math.round(combinedWithdrawn), combinedContributions: Math.round(combinedContributions), combinedInterest: Math.round(combinedInterest), yearlySchoolCost: Math.round(yearlySchoolCost), shortfall: Math.round(shortfall), ...Object.fromEntries(accounts.map((account) => [account.name, Math.round(account.balance)])), ...Object.fromEntries(accounts.map((account) => [`${account.name} School Cost`, Math.round(schoolCosts[account.name] || 0)])) });
   }
   const last = rows[rows.length - 1];
   const peakBalance = Math.max(...rows.map((row) => row.combinedBalance));
@@ -661,12 +676,12 @@ function findCollegeZeroBalanceContribution({ children, startingAmount, annualTu
   let low = 0;
   let high = 100;
   while (!isFunded(scenarioFor(high)) && high < 100000) high *= 2;
-  for (let index = 0; index < 36; index++) {
+  for (let index = 0; index < 48; index++) {
     const mid = (low + high) / 2;
     if (isFunded(scenarioFor(mid))) high = mid;
     else low = mid;
   }
-  return Math.ceil(high * 1000) / 1000;
+  return Math.ceil(high * 10000) / 10000;
 }
 function SchoolYearSelect({ label, value, onChange }) {
   return <div><label className="text-sm font-medium text-neutral-800">{label}</label><select value={value} onChange={(event) => onChange(parseNumber(event.target.value))} className="mt-2 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-900 outline-none focus:border-neutral-950">{SCHOOL_YEAR_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>;
@@ -686,7 +701,145 @@ function CollegeSavingsCalculator() {
   const setZeroEndingContribution = () => setMonthlyContribution(findCollegeZeroBalanceContribution({ children, startingAmount, annualTuition, annualBoard, marketReturn, inflation }));
   const result = useMemo(() => calculateCollegeSavingsScenario({ children, startingAmount, monthlyContribution, annualTuition, annualBoard, marketReturn, inflation }), [children, startingAmount, monthlyContribution, annualTuition, annualBoard, marketReturn, inflation]);
   const exportColumns = useMemo(() => [...COLLEGE_SAVINGS_EXPORT_COLUMNS, ...result.accounts.map((account) => ({ header: `${account.name} Balance`, key: account.name }))], [result.accounts]);
-  return <CalculatorFrame title="College Savings Calculator" description="Project education savings by child, with monthly contributions, index-return assumptions, tuition and board inflation, and lump-sum July withdrawals for each college year." exportData={{ columns: exportColumns, rows: result.rows }}><div className="space-y-4"><div className="grid gap-4 md:grid-cols-4"><SmallStat label="Ending combined balance" value={formatCompactMoney(result.endingBalance)} tone={result.shortfall > 0 ? "amber" : "green"} /><SmallStat label="College costs paid" value={formatCompactMoney(result.totalWithdrawn)} tone="blue" /><SmallStat label="Investment growth" value={formatCompactMoney(result.totalInterest)} tone="green" /><SmallStat label="Uncovered shortfall" value={formatCompactMoney(result.shortfall)} tone={result.shortfall > 0 ? "amber" : "neutral"} /></div><div className="grid items-stretch gap-5 xl:grid-cols-[430px_1fr]"><Card><SectionTitle icon={GraduationIcon} title="Family & school timing" subtitle="Each child gets a separate account, using the same starting amount and monthly contribution." /><div className="space-y-4"><RangeInput label="# of children" value={childCount} onChange={setSafeChildCount} min={1} max={6} suffix="" /><div className="grid gap-4 sm:grid-cols-2">{children.map((child, index) => <SchoolYearSelect key={child.id} label={`Child ${index + 1} current year`} value={child.currentGrade} onChange={(grade) => updateChildGrade(index, grade)} />)}</div><MoneyInput label="Starting amount per child" value={startingAmount} onChange={setStartingAmount} max={500000} step={1000} /><MoneyInput label="Monthly contribution per child" value={monthlyContribution} onChange={setMonthlyContribution} max={10000} step={50} displayValue={numberFormatter.format(Math.round(monthlyContribution))} /><button type="button" onClick={setZeroEndingContribution} className="w-full rounded-xl border border-neutral-950 bg-neutral-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-neutral-800">End account with $0</button></div></Card><Card className="flex min-h-[560px] flex-col"><SectionTitle icon={BarChartIcon} title="Combined account value" subtitle={`Combined balances across ${childCount} ${childCount === 1 ? "child" : "children"} over ${result.horizonYears} years.`} /><div className="h-[360px] flex-1"><ResponsiveContainer width="100%" height="100%"><LineChart data={result.rows}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="year" tickLine={false} axisLine={false} /><YAxis tickFormatter={formatCompactMoney} tickLine={false} axisLine={false} width={72} /><Tooltip content={<ChartTooltip />} /><Legend /><Line type="monotone" dataKey="combinedBalance" name="Combined Balance" stroke="#059669" strokeWidth={3} dot={false} /><Line type="monotone" dataKey="combinedWithdrawn" name="Cumulative Withdrawals" stroke="#0284c7" strokeWidth={2} dot={false} strokeDasharray="6 4" />{result.shortfall > 0 && <Line type="monotone" dataKey="shortfall" name="Shortfall" stroke="#d97706" strokeWidth={2} dot={false} strokeDasharray="3 5" />}</LineChart></ResponsiveContainer></div></Card></div><div className="grid gap-5 lg:grid-cols-2"><Card><SectionTitle icon={DollarIcon} title="College cost assumptions" subtitle="Tuition and board are withdrawn together every July during each four-year college period." /><div className="grid gap-4 md:grid-cols-2"><MoneyInput label="Annual tuition" value={annualTuition} onChange={setAnnualTuition} max={150000} step={1000} /><MoneyInput label="Annual board" value={annualBoard} onChange={setAnnualBoard} max={75000} step={500} /><PercentInput label="Education inflation" value={inflation} onChange={setInflation} min={0} max={12} helperText="Applied to each future July withdrawal." /><div><div className="text-sm font-medium text-neutral-800">Current annual cost</div><div className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-bold text-neutral-950">{formatMoney(annualTuition + annualBoard)}</div></div></div></Card><Card><SectionTitle icon={TrendingUpIcon} title="Investment assumptions" subtitle="Use the same index-fund return presets as the other calculators." /><MarketReturnPicker value={marketReturn} onChange={setMarketReturn} /></Card></div><Card><SectionTitle icon={BarChartIcon} title="Individual account values" subtitle="Separate balance lines show each child's savings rising with contributions and falling after July withdrawals." /><div className="h-[420px]"><ResponsiveContainer width="100%" height="100%"><LineChart data={result.rows}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="year" tickLine={false} axisLine={false} /><YAxis tickFormatter={formatCompactMoney} tickLine={false} axisLine={false} width={72} /><Tooltip content={<ChartTooltip />} /><Legend />{result.accounts.map((account, index) => <Line key={account.name} type="monotone" dataKey={account.name} name={account.name} stroke={CHART_COLORS[index % CHART_COLORS.length]} strokeWidth={3} dot={false} />)}</LineChart></ResponsiveContainer></div></Card><Card><div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><SectionTitle icon={CalculatorIcon} title="Child account summary" subtitle="Balances, contributions, earnings, withdrawals, and any uncovered college cost." /><button type="button" onClick={() => setShowTable((value) => !value)} className="rounded-full border border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50">{showTable ? "Hide monthly table" : "Show monthly table"}</button></div><div className="mt-2 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{result.accounts.map((account) => <div key={account.name} className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4"><div className="text-sm font-bold text-neutral-950">{account.name}</div><div className="mt-3 grid grid-cols-2 gap-3 text-xs"><span className="text-neutral-500">Ending balance</span><strong className="text-right">{formatMoney(account.balance)}</strong><span className="text-neutral-500">Contributed</span><strong className="text-right">{formatMoney(account.contributions)}</strong><span className="text-neutral-500">Interest earned</span><strong className="text-right">{formatMoney(account.interest)}</strong><span className="text-neutral-500">Withdrawn</span><strong className="text-right">{formatMoney(account.withdrawn)}</strong><span className="text-neutral-500">Shortfall</span><strong className="text-right">{formatMoney(account.shortfall)}</strong></div></div>)}</div>{showTable && <div className="mt-4 max-h-[520px] overflow-y-auto rounded-2xl border border-neutral-200"><table className="w-full table-fixed border-separate border-spacing-0 text-left text-xs leading-tight"><thead className="sticky top-0 bg-white"><tr className="uppercase tracking-wide text-neutral-500"><th className="border-b border-neutral-200 px-3 py-2">Year</th><th className="border-b border-neutral-200 px-3 py-2">Combined</th><th className="border-b border-neutral-200 px-3 py-2">Withdrawn</th><th className="border-b border-neutral-200 px-3 py-2">Interest</th><th className="border-b border-neutral-200 px-3 py-2">Shortfall</th></tr></thead><tbody>{result.rows.filter((row) => row.month % 12 === 0 || row.month === 0).map((row) => <tr key={row.month}><td className="border-b border-neutral-100 px-3 py-2 font-semibold">{row.year}</td><td className="border-b border-neutral-100 px-3 py-2">{formatCompactMoney(row.combinedBalance)}</td><td className="border-b border-neutral-100 px-3 py-2">{formatCompactMoney(row.combinedWithdrawn)}</td><td className="border-b border-neutral-100 px-3 py-2">{formatCompactMoney(row.combinedInterest)}</td><td className="border-b border-neutral-100 px-3 py-2">{formatCompactMoney(row.shortfall)}</td></tr>)}</tbody></table></div>}</Card></div></CalculatorFrame>;
+  return <CalculatorFrame title="College Savings Calculator" description="Project education savings by child, with monthly contributions, index-return assumptions, tuition and board inflation, and lump-sum July withdrawals for each college year." exportData={{ columns: exportColumns, rows: result.rows }}><div className="space-y-4"><div className="grid gap-4 md:grid-cols-4"><SmallStat label="Ending combined balance" value={formatCompactMoney(result.endingBalance)} tone={result.shortfall > 0 ? "amber" : "green"} /><SmallStat label="College costs paid" value={formatCompactMoney(result.totalWithdrawn)} tone="blue" /><SmallStat label="Investment growth" value={formatCompactMoney(result.totalInterest)} tone="green" /><SmallStat label="Uncovered shortfall" value={formatCompactMoney(result.shortfall)} tone={result.shortfall > 0 ? "amber" : "neutral"} /></div><div className="grid items-stretch gap-5 xl:grid-cols-[430px_1fr]"><Card><SectionTitle icon={GraduationIcon} title="Family & school timing" subtitle="Each child gets a separate account, using the same starting amount and monthly contribution." /><div className="space-y-4"><RangeInput label="# of children" value={childCount} onChange={setSafeChildCount} min={1} max={6} suffix="" /><div className="grid gap-4 sm:grid-cols-2">{children.map((child, index) => <SchoolYearSelect key={child.id} label={`Child ${index + 1} current year`} value={child.currentGrade} onChange={(grade) => updateChildGrade(index, grade)} />)}</div><MoneyInput label="Starting amount per child" value={startingAmount} onChange={setStartingAmount} max={500000} step={1000} /><MoneyInput label="Monthly contribution per child" value={monthlyContribution} onChange={setMonthlyContribution} max={10000} step={50} displayValue={numberFormatter.format(Math.round(monthlyContribution))} /><button type="button" onClick={setZeroEndingContribution} className="w-full rounded-xl border border-neutral-950 bg-neutral-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-neutral-800">End account with $0</button></div></Card><Card className="flex min-h-[560px] flex-col"><SectionTitle icon={BarChartIcon} title="Combined account value" subtitle={`Combined balances across ${childCount} ${childCount === 1 ? "child" : "children"} over ${result.horizonYears} years.`} /><div className="h-[360px] flex-1"><ResponsiveContainer width="100%" height="100%"><LineChart data={result.rows}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="year" tickLine={false} axisLine={false} /><YAxis tickFormatter={formatCompactMoney} tickLine={false} axisLine={false} width={72} /><Tooltip content={<ChartTooltip />} /><Legend /><Line type="monotone" dataKey="combinedBalance" name="Combined Balance" stroke="#059669" strokeWidth={3} dot={false} /><Line type="monotone" dataKey="combinedWithdrawn" name="Cumulative Withdrawals" stroke="#0284c7" strokeWidth={2} dot={false} strokeOpacity={0.6} /><Line type="stepAfter" dataKey="yearlySchoolCost" name="Yearly School Cost" stroke="#dc2626" strokeWidth={2} dot={false} strokeDasharray="4 4" />{result.shortfall > 0 && <Line type="monotone" dataKey="shortfall" name="Shortfall" stroke="#d97706" strokeWidth={2} dot={false} strokeOpacity={0.6} />}</LineChart></ResponsiveContainer></div></Card></div><div className="grid gap-5 lg:grid-cols-2"><Card><SectionTitle icon={DollarIcon} title="College cost assumptions" subtitle="Enter tuition and board in today&apos;s dollars. Future July withdrawals inflate from these current costs." /><div className="grid gap-4 md:grid-cols-2"><MoneyInput label="Annual tuition" value={annualTuition} onChange={setAnnualTuition} max={150000} step={1000} /><MoneyInput label="Annual board" value={annualBoard} onChange={setAnnualBoard} max={75000} step={500} /><PercentInput label="Education inflation" value={inflation} onChange={setInflation} min={0} max={12} helperText="Applied to each future July withdrawal." /><div><div className="text-sm font-medium text-neutral-800">Current annual cost</div><div className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-bold text-neutral-950">{formatMoney(annualTuition + annualBoard)}</div></div></div></Card><Card><SectionTitle icon={TrendingUpIcon} title="Investment assumptions" subtitle="Use the same index-fund return presets as the other calculators." /><MarketReturnPicker value={marketReturn} onChange={setMarketReturn} /></Card></div><Card><SectionTitle icon={BarChartIcon} title="Individual account values" subtitle="Separate balance lines show each child's savings rising with contributions and falling after July withdrawals." /><div className="h-[420px]"><ResponsiveContainer width="100%" height="100%"><LineChart data={result.rows}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="year" tickLine={false} axisLine={false} /><YAxis tickFormatter={formatCompactMoney} tickLine={false} axisLine={false} width={72} /><Tooltip content={<ChartTooltip />} /><Legend />{result.accounts.map((account, index) => <Line key={account.name} type="monotone" dataKey={account.name} name={account.name} stroke={CHART_COLORS[index % CHART_COLORS.length]} strokeWidth={3} dot={false} />)}{result.accounts.map((account, index) => <Line key={`${account.name}-school-cost`} type="stepAfter" dataKey={`${account.name} School Cost`} name={`${account.name} School Cost`} stroke={CHART_COLORS[index % CHART_COLORS.length]} strokeWidth={2} dot={false} strokeDasharray="4 4" />)}</LineChart></ResponsiveContainer></div></Card><Card><div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><SectionTitle icon={CalculatorIcon} title="Child account summary" subtitle="Balances, contributions, earnings, withdrawals, and any uncovered college cost." /><button type="button" onClick={() => setShowTable((value) => !value)} className="rounded-full border border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50">{showTable ? "Hide monthly table" : "Show monthly table"}</button></div><div className="mt-2 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{result.accounts.map((account) => <div key={account.name} className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4"><div className="text-sm font-bold text-neutral-950">{account.name}</div><div className="mt-3 grid grid-cols-2 gap-3 text-xs"><span className="text-neutral-500">Ending balance</span><strong className="text-right">{formatMoney(account.balance)}</strong><span className="text-neutral-500">Contributed</span><strong className="text-right">{formatMoney(account.contributions)}</strong><span className="text-neutral-500">Interest earned</span><strong className="text-right">{formatMoney(account.interest)}</strong><span className="text-neutral-500">Withdrawn</span><strong className="text-right">{formatMoney(account.withdrawn)}</strong><span className="text-neutral-500">Shortfall</span><strong className="text-right">{formatMoney(account.shortfall)}</strong></div></div>)}</div>{showTable && <div className="mt-4 max-h-[520px] overflow-y-auto rounded-2xl border border-neutral-200"><table className="w-full table-fixed border-separate border-spacing-0 text-left text-xs leading-tight"><thead className="sticky top-0 bg-white"><tr className="uppercase tracking-wide text-neutral-500"><th className="border-b border-neutral-200 px-3 py-2">Year</th><th className="border-b border-neutral-200 px-3 py-2">Combined</th><th className="border-b border-neutral-200 px-3 py-2">Withdrawn</th><th className="border-b border-neutral-200 px-3 py-2">Interest</th><th className="border-b border-neutral-200 px-3 py-2">Shortfall</th></tr></thead><tbody>{result.rows.filter((row) => row.month % 12 === 0 || row.month === 0).map((row) => <tr key={row.month}><td className="border-b border-neutral-100 px-3 py-2 font-semibold">{row.year}</td><td className="border-b border-neutral-100 px-3 py-2">{formatCompactMoney(row.combinedBalance)}</td><td className="border-b border-neutral-100 px-3 py-2">{formatCompactMoney(row.combinedWithdrawn)}</td><td className="border-b border-neutral-100 px-3 py-2">{formatCompactMoney(row.combinedInterest)}</td><td className="border-b border-neutral-100 px-3 py-2">{formatCompactMoney(row.shortfall)}</td></tr>)}</tbody></table></div>}</Card></div></CalculatorFrame>;
+}
+
+function makeGenerationalChildren(count, currentChildren = []) {
+  return Array.from({ length: count }, (_, index) => currentChildren[index] || { id: `gen-child-${index + 1}`, age: index === 0 ? 7 : index === 1 ? 5 : Math.max(0, 7 - index * 2), currentGrade: index === 0 ? 2 : index === 1 ? 0 : Math.max(-1, index) });
+}
+function calculateGenerationalSavingsScenario({ children, startingAmount, monthlyContribution, marketReturn, inflation, carCost, annualTuition, annualBoard, annualPostgradTuition, annualPostgradBoard, postgradYears, downPayment }) {
+  const monthlyRate = marketReturn / 100 / 12;
+  const childPlans = children.map((child, index) => {
+    const name = `Child ${index + 1}`;
+    const carMonth = Math.max(0, (16 - child.age) * 12);
+    const collegeStartMonth = Math.max(0, (12 - child.currentGrade) * 12 + 2);
+    const postgradStartMonth = collegeStartMonth + 48;
+    const homeMonth = Math.max(0, (25 - child.age) * 12);
+    const events = [
+      { key: "Car", month: carMonth, cost: carCost },
+      ...[0, 12, 24, 36].map((offset) => ({ key: "College", month: collegeStartMonth + offset, cost: annualTuition + annualBoard })),
+      ...Array.from({ length: postgradYears }, (_, year) => ({ key: "Postgrad", month: postgradStartMonth + year * 12, cost: annualPostgradTuition + annualPostgradBoard })),
+      { key: "Down Payment", month: homeMonth, cost: downPayment },
+    ];
+    return { ...child, id: child.id || `gen-child-${index + 1}`, name, events, finalMonth: Math.max(...events.map((event) => event.month)) };
+  });
+  const horizonMonths = Math.max(12, ...childPlans.map((child) => child.finalMonth));
+  const accounts = childPlans.map((child) => ({ ...child, balance: startingAmount, contributions: startingAmount, interest: 0, withdrawn: 0, shortfall: 0, carPaid: 0, collegePaid: 0, postgradPaid: 0, downPaymentPaid: 0 }));
+  const yearlyAccountRows = [];
+  let activeYear = 1;
+  let yearlyAccounts = accounts.map((account) => ({ name: account.name, startingBalance: account.balance, contributions: 0, earnings: 0, milestoneExpenses: 0, withdrawals: 0 }));
+  const pushYearlyAccountRows = () => {
+    yearlyAccounts.forEach((yearlyAccount, index) => {
+      yearlyAccountRows.push({ year: activeYear, child: yearlyAccount.name, startingBalance: Math.round(yearlyAccount.startingBalance), contributions: Math.round(yearlyAccount.contributions), earnings: Math.round(yearlyAccount.earnings), milestoneExpenses: Math.round(yearlyAccount.milestoneExpenses), withdrawals: Math.round(yearlyAccount.withdrawals), endingBalance: Math.round(accounts[index].balance) });
+    });
+  };
+  const rows = [{ year: 0, month: 0, combinedBalance: Math.round(startingAmount * accounts.length), milestoneCost: 0, milestoneDetails: [], combinedWithdrawn: 0, combinedContributions: Math.round(startingAmount * accounts.length), combinedInterest: 0, shortfall: 0, ...Object.fromEntries(accounts.map((account) => [account.name, Math.round(account.balance)])), ...Object.fromEntries(accounts.map((account) => [`${account.name} Milestone Cost`, 0])) }];
+  for (let month = 1; month <= horizonMonths; month++) {
+    const yearNumber = Math.floor((month - 1) / 12) + 1;
+    if (yearNumber !== activeYear) {
+      pushYearlyAccountRows();
+      activeYear = yearNumber;
+      yearlyAccounts = accounts.map((account) => ({ name: account.name, startingBalance: account.balance, contributions: 0, earnings: 0, milestoneExpenses: 0, withdrawals: 0 }));
+    }
+    const milestoneCosts = {};
+    const milestoneDetails = [];
+    accounts.forEach((account, accountIndex) => {
+      if (month <= account.finalMonth) {
+        account.balance += monthlyContribution;
+        account.contributions += monthlyContribution;
+        yearlyAccounts[accountIndex].contributions += monthlyContribution;
+      }
+      const interest = account.balance * monthlyRate;
+      account.balance = Math.max(0, account.balance + interest);
+      account.interest += interest;
+      yearlyAccounts[accountIndex].earnings += interest;
+      account.events.filter((event) => event.month === month).forEach((event) => {
+        const inflatedCost = event.cost * safePow(1 + inflation / 100, month / 12);
+        milestoneCosts[account.name] = (milestoneCosts[account.name] || 0) + inflatedCost;
+        milestoneDetails.push({ label: `${account.name} ${event.key}`, cost: inflatedCost });
+        yearlyAccounts[accountIndex].milestoneExpenses += inflatedCost;
+        let remainingCost = inflatedCost;
+        let paid = Math.min(account.balance, remainingCost);
+        account.balance -= paid;
+        account.withdrawn += paid;
+        yearlyAccounts[accountIndex].withdrawals += paid;
+        remainingCost -= paid;
+        accounts.forEach((sourceAccount, sourceIndex) => {
+          if (sourceAccount.id === account.id || remainingCost <= 0) return;
+          const sharedPayment = Math.min(sourceAccount.balance, remainingCost);
+          sourceAccount.balance -= sharedPayment;
+          sourceAccount.withdrawn += sharedPayment;
+          yearlyAccounts[sourceIndex].withdrawals += sharedPayment;
+          paid += sharedPayment;
+          remainingCost -= sharedPayment;
+        });
+        account.shortfall += Math.max(0, remainingCost);
+        if (event.key === "Car") account.carPaid += paid;
+        if (event.key === "College") account.collegePaid += paid;
+        if (event.key === "Postgrad") account.postgradPaid += paid;
+        if (event.key === "Down Payment") account.downPaymentPaid += paid;
+      });
+    });
+    const combinedBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
+    const combinedWithdrawn = accounts.reduce((sum, account) => sum + account.withdrawn, 0);
+    const combinedContributions = accounts.reduce((sum, account) => sum + account.contributions, 0);
+    const combinedInterest = accounts.reduce((sum, account) => sum + account.interest, 0);
+    const milestoneCost = Object.values(milestoneCosts).reduce((sum, cost) => sum + cost, 0);
+    const shortfall = accounts.reduce((sum, account) => sum + account.shortfall, 0);
+    rows.push({ year: Number((month / 12).toFixed(1)), month, combinedBalance: Math.round(combinedBalance), milestoneCost: Math.round(milestoneCost), milestoneDetails, combinedWithdrawn: Math.round(combinedWithdrawn), combinedContributions: Math.round(combinedContributions), combinedInterest: Math.round(combinedInterest), shortfall: Math.round(shortfall), ...Object.fromEntries(accounts.map((account) => [account.name, Math.round(account.balance)])), ...Object.fromEntries(accounts.map((account) => [`${account.name} Milestone Cost`, Math.round(milestoneCosts[account.name] || 0)])) });
+  }
+  pushYearlyAccountRows();
+  const last = rows[rows.length - 1];
+  const rawEndingBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
+  const rawShortfall = accounts.reduce((sum, account) => sum + account.shortfall, 0);
+  return {
+    rows,
+    accounts: accounts.map((account) => ({ ...account, balance: Math.round(account.balance), contributions: Math.round(account.contributions), interest: Math.round(account.interest), withdrawn: Math.round(account.withdrawn), shortfall: Math.round(account.shortfall), carPaid: Math.round(account.carPaid), collegePaid: Math.round(account.collegePaid), postgradPaid: Math.round(account.postgradPaid), downPaymentPaid: Math.round(account.downPaymentPaid) })),
+    endingBalance: last.combinedBalance,
+    totalContributions: last.combinedContributions,
+    totalInterest: last.combinedInterest,
+    totalWithdrawn: last.combinedWithdrawn,
+    yearlyAccountRows,
+    shortfall: last.shortfall,
+    rawEndingBalance,
+    rawShortfall,
+    horizonYears: Number((horizonMonths / 12).toFixed(1)),
+  };
+}
+function findGenerationalZeroBalanceContribution({ children, startingAmount, marketReturn, inflation, carCost, annualTuition, annualBoard, annualPostgradTuition, annualPostgradBoard, postgradYears, downPayment }) {
+  const scenarioFor = (monthlyContribution) => calculateGenerationalSavingsScenario({ children, startingAmount, monthlyContribution, marketReturn, inflation, carCost, annualTuition, annualBoard, annualPostgradTuition, annualPostgradBoard, postgradYears, downPayment });
+  const isFunded = (scenario) => scenario.rawShortfall <= 0.01;
+  const zeroContributionScenario = scenarioFor(0);
+  if (isFunded(zeroContributionScenario)) return 0;
+  let low = 0;
+  let high = 100;
+  while (!isFunded(scenarioFor(high)) && high < 100000) high *= 2;
+  for (let index = 0; index < 48; index++) {
+    const mid = (low + high) / 2;
+    if (isFunded(scenarioFor(mid))) high = mid;
+    else low = mid;
+  }
+  return Math.ceil(high * 10000) / 10000;
+}
+function GenerationalSavingsCalculator() {
+  const [childCount, setChildCount] = useState(2);
+  const [children, setChildren] = useState(() => makeGenerationalChildren(2));
+  const [startingAmount, setStartingAmount] = useState(10000);
+  const [monthlyContribution, setMonthlyContribution] = useState(1000);
+  const [marketReturn, setMarketReturn] = useState(10);
+  const [inflation, setInflation] = useState(3);
+  const [carCost, setCarCost] = useState(30000);
+  const [annualTuition, setAnnualTuition] = useState(35000);
+  const [annualBoard, setAnnualBoard] = useState(18000);
+  const [annualPostgradTuition, setAnnualPostgradTuition] = useState(60000);
+  const [annualPostgradBoard, setAnnualPostgradBoard] = useState(24000);
+  const [postgradYears, setPostgradYears] = useState(2);
+  const [downPayment, setDownPayment] = useState(150000);
+  const setSafeChildCount = (nextCount) => { const count = clampNumber(parseNumber(nextCount), 1, 6); setChildCount(count); setChildren((current) => makeGenerationalChildren(count, current)); };
+  const updateChild = (index, updates) => setChildren((current) => current.map((child, childIndex) => childIndex === index ? { ...child, ...updates } : child));
+  const setZeroEndingContribution = () => setMonthlyContribution(findGenerationalZeroBalanceContribution({ children, startingAmount, marketReturn, inflation, carCost, annualTuition, annualBoard, annualPostgradTuition, annualPostgradBoard, postgradYears, downPayment }));
+  const result = useMemo(() => calculateGenerationalSavingsScenario({ children, startingAmount, monthlyContribution, marketReturn, inflation, carCost, annualTuition, annualBoard, annualPostgradTuition, annualPostgradBoard, postgradYears, downPayment }), [children, startingAmount, monthlyContribution, marketReturn, inflation, carCost, annualTuition, annualBoard, annualPostgradTuition, annualPostgradBoard, postgradYears, downPayment]);
+  return <CalculatorFrame title="Generational Savings Calculator" description="Model savings accounts for kids' cars at 16, college after senior year, postgraduate degrees after college, and home down payments at 25. Costs are entered in today's dollars and inflated to each milestone." exportData={{ columns: GENERATIONAL_SAVINGS_EXPORT_COLUMNS, rows: result.yearlyAccountRows }}><div className="space-y-4"><div className="grid gap-4 md:grid-cols-5"><SmallStat label="Ending balance" value={formatCompactMoney(result.endingBalance)} tone={result.shortfall > 0 ? "amber" : "green"} /><SmallStat label="Milestones paid" value={formatCompactMoney(result.totalWithdrawn)} tone="blue" /><SmallStat label="Investment growth" value={formatCompactMoney(result.totalInterest)} tone="green" /><SmallStat label="Total invested" value={formatCompactMoney(result.totalContributions)} tone="teal" /><SmallStat label="Shortfall" value={formatCompactMoney(result.shortfall)} tone={result.shortfall > 0 ? "red" : "neutral"} /></div><div className="grid gap-5 xl:grid-cols-[430px_1fr]"><Card><SectionTitle icon={GiftIcon} title="Children & savings" subtitle="Set age and current grade for milestone timing." /><div className="space-y-4"><RangeInput label="# of children" value={childCount} onChange={setSafeChildCount} min={1} max={6} /><div className="grid gap-4 sm:grid-cols-2">{children.map((child, index) => <div key={child.id} className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4"><div className="text-sm font-bold text-neutral-950">Child {index + 1}</div><RangeInput label="Age" value={child.age} onChange={(age) => updateChild(index, { age })} min={0} max={24} /><SchoolYearSelect label="Current grade" value={child.currentGrade} onChange={(currentGrade) => updateChild(index, { currentGrade })} /></div>)}</div><MoneyInput label="Starting amount per child" value={startingAmount} onChange={setStartingAmount} max={250000} step={1000} /><MoneyInput label="Monthly contribution per child" value={monthlyContribution} onChange={setMonthlyContribution} max={15000} step={100} displayValue={numberFormatter.format(Math.round(monthlyContribution))} /><button type="button" onClick={setZeroEndingContribution} className="w-full rounded-xl border border-neutral-950 bg-neutral-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-neutral-800">End account with $0</button></div></Card><Card className="flex min-h-[560px] flex-col"><SectionTitle icon={BarChartIcon} title="Generational savings path" subtitle={`Combined balances across ${childCount} ${childCount === 1 ? "child" : "children"} over ${result.horizonYears} years.`} /><div className="h-[420px] flex-1"><ResponsiveContainer width="100%" height="100%"><LineChart data={result.rows} margin={{ top: 10, right: 20, left: 0, bottom: 16 }}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="year" type="number" domain={[0, Math.ceil(result.horizonYears)]} allowDecimals={false} tickLine={false} axisLine={false} height={56} label={{ value: "Years from today", position: "insideBottom", offset: 10 }} /><YAxis tickFormatter={formatCompactMoney} tickLine={false} axisLine={false} width={72} /><Tooltip content={<ChartTooltip />} /><Legend verticalAlign="bottom" wrapperStyle={{ bottom: 0 }} /><Line type="monotone" dataKey="combinedBalance" name="Combined Balance" stroke="#059669" strokeWidth={3} dot={false} /><Line type="stepAfter" dataKey="milestoneCost" name="Milestone Cost" stroke="#d946ef" strokeWidth={2} dot={false} strokeOpacity={0.6} /><Line type="monotone" dataKey="combinedWithdrawn" name="Cumulative Withdrawals" stroke="#0284c7" strokeWidth={2} dot={false} strokeOpacity={0.6} />{result.shortfall > 0 && <Line type="monotone" dataKey="shortfall" name="Shortfall" stroke="#dc2626" strokeWidth={2} dot={false} strokeOpacity={0.6} />}</LineChart></ResponsiveContainer></div></Card></div><div className="grid gap-5"><Card><SectionTitle icon={TrendingUpIcon} title="Investment assumptions" subtitle="Use the same index-fund return presets as the other calculators." /><div className="grid gap-4 md:grid-cols-2"><PercentInput label="Education inflation" value={inflation} onChange={setInflation} min={0} max={12} helperText="Applied to future milestone withdrawals." /><div className="md:col-span-2"><MarketReturnPicker value={marketReturn} onChange={setMarketReturn} /></div></div></Card><Card><SectionTitle icon={CarIcon} title="Car milestone" subtitle="Assumes a car purchase at age 16." /><MoneyInput label="Car cost" value={carCost} onChange={setCarCost} max={150000} step={1000} /></Card><Card><SectionTitle icon={DollarIcon} title="College cost assumptions" subtitle="Enter tuition and board in today&apos;s dollars. Future milestone withdrawals inflate from these current costs." /><div className="grid gap-4 md:grid-cols-2"><MoneyInput label="Annual tuition" value={annualTuition} onChange={setAnnualTuition} max={150000} step={1000} /><MoneyInput label="Annual board" value={annualBoard} onChange={setAnnualBoard} max={75000} step={500} /><div><div className="text-sm font-medium text-neutral-800">Current annual cost</div><div className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-bold text-neutral-950">{formatMoney(annualTuition + annualBoard)}</div></div></div></Card><Card><SectionTitle icon={GraduationIcon} title="Postgrad degree milestone" subtitle="Enter postgrad tuition and board in today&apos;s dollars. Future withdrawals inflate from these current costs." /><div className="grid gap-4 md:grid-cols-2"><MoneyInput label="Annual postgrad tuition" value={annualPostgradTuition} onChange={setAnnualPostgradTuition} max={150000} step={1000} /><MoneyInput label="Annual postgrad board" value={annualPostgradBoard} onChange={setAnnualPostgradBoard} max={75000} step={500} /><RangeInput label="Postgrad length" value={postgradYears} onChange={setPostgradYears} min={1} max={6} suffix="yrs" /><div><div className="text-sm font-medium text-neutral-800">Current annual postgrad cost</div><div className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-bold text-neutral-950">{formatMoney(annualPostgradTuition + annualPostgradBoard)}</div></div></div></Card><Card><SectionTitle icon={HomeIcon} title="Home down payment milestone" subtitle="Assumes a down payment at age 25." /><MoneyInput label="Home down payment" value={downPayment} onChange={setDownPayment} max={1000000} step={5000} /></Card></div><Card><SectionTitle icon={BarChartIcon} title="Individual account balances" subtitle="Separate lines show each child's balance and milestone costs." /><div className="h-[420px]"><ResponsiveContainer width="100%" height="100%"><LineChart data={result.rows} margin={{ top: 10, right: 20, left: 0, bottom: 16 }}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="year" type="number" domain={[0, Math.ceil(result.horizonYears)]} allowDecimals={false} tickLine={false} axisLine={false} height={56} label={{ value: "Years from today", position: "insideBottom", offset: 10 }} /><YAxis tickFormatter={formatCompactMoney} tickLine={false} axisLine={false} width={72} /><Tooltip content={<ChartTooltip />} /><Legend verticalAlign="bottom" wrapperStyle={{ bottom: 0 }} />{result.accounts.map((account, index) => <Line key={account.name} type="monotone" dataKey={account.name} name={account.name} stroke={CHART_COLORS[index % CHART_COLORS.length]} strokeWidth={3} dot={false} />)}{result.accounts.map((account, index) => <Line key={`${account.name}-milestone-cost`} type="stepAfter" dataKey={`${account.name} Milestone Cost`} name={`${account.name} Milestone Cost`} stroke={CHART_COLORS[index % CHART_COLORS.length]} strokeWidth={2} dot={false} strokeOpacity={0.6} />)}</LineChart></ResponsiveContainer></div></Card><Card><SectionTitle icon={CalculatorIcon} title="Child account summary" subtitle="Balances, contributions, earnings, withdrawals, and milestone coverage by child." /><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{result.accounts.map((account) => <div key={account.name} className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4"><div className="text-sm font-bold text-neutral-950">{account.name}</div><div className="mt-3 grid grid-cols-2 gap-3 text-xs"><span className="text-neutral-500">Ending balance</span><strong className="text-right">{formatMoney(account.balance)}</strong><span className="text-neutral-500">Contributed</span><strong className="text-right">{formatMoney(account.contributions)}</strong><span className="text-neutral-500">Interest earned</span><strong className="text-right">{formatMoney(account.interest)}</strong><span className="text-neutral-500">Car paid</span><strong className="text-right">{formatMoney(account.carPaid)}</strong><span className="text-neutral-500">College paid</span><strong className="text-right">{formatMoney(account.collegePaid)}</strong><span className="text-neutral-500">Postgrad paid</span><strong className="text-right">{formatMoney(account.postgradPaid)}</strong><span className="text-neutral-500">Down payment paid</span><strong className="text-right">{formatMoney(account.downPaymentPaid)}</strong><span className="text-neutral-500">Shortfall</span><strong className="text-right">{formatMoney(account.shortfall)}</strong></div></div>)}</div></Card><Card><SectionTitle icon={CalculatorIcon} title="Year-by-year child table" subtitle="Starting balances, contributions, earnings, and milestone expenses by child for each year from today." /><div className="mt-2 max-h-[560px] overflow-y-auto rounded-2xl border border-neutral-200"><table className="w-full min-w-[860px] table-fixed border-separate border-spacing-0 text-left text-xs leading-tight"><thead className="sticky top-0 bg-white"><tr className="uppercase tracking-wide text-neutral-500"><th className="border-b border-neutral-200 px-3 py-2">Year</th><th className="border-b border-neutral-200 px-3 py-2">Child</th><th className="border-b border-neutral-200 px-3 py-2 text-right">Starting amount</th><th className="border-b border-neutral-200 px-3 py-2 text-right">Contributions</th><th className="border-b border-neutral-200 px-3 py-2 text-right">Earnings</th><th className="border-b border-neutral-200 px-3 py-2 text-right">Milestone expenses</th><th className="border-b border-neutral-200 px-3 py-2 text-right">Ending balance</th></tr></thead><tbody>{result.yearlyAccountRows.map((row) => <tr key={`${row.year}-${row.child}`}><td className="border-b border-neutral-100 px-3 py-2 font-semibold">{row.year}</td><td className="border-b border-neutral-100 px-3 py-2 font-semibold">{row.child}</td><td className="border-b border-neutral-100 px-3 py-2 text-right">{formatCompactMoney(row.startingBalance)}</td><td className="border-b border-neutral-100 px-3 py-2 text-right">{formatCompactMoney(row.contributions)}</td><td className="border-b border-neutral-100 px-3 py-2 text-right">{formatCompactMoney(row.earnings)}</td><td className="border-b border-neutral-100 px-3 py-2 text-right">{formatCompactMoney(row.milestoneExpenses)}</td><td className="border-b border-neutral-100 px-3 py-2 text-right">{formatCompactMoney(row.endingBalance)}</td></tr>)}</tbody></table></div></Card></div></CalculatorFrame>;
 }
 function LandingPage({ onSelectCalculator }) {
   const renderCard = (calculator) => {
@@ -695,7 +848,7 @@ function LandingPage({ onSelectCalculator }) {
       <a
         key={calculator.id}
         href={calculatorRouteMap[calculator.id]}
-        className="group flex min-h-[330px] w-full flex-col rounded-3xl border border-neutral-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-neutral-400 hover:shadow-md"
+        className="group flex min-h-[330px] w-full max-w-[380px] flex-col rounded-3xl border border-neutral-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-neutral-400 hover:shadow-md md:w-[calc(50%-10px)] min-[1440px]:w-[calc(25%-15px)]"
       >
         <div className="mb-5 flex h-12 items-start">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-neutral-100 leading-none transition group-hover:bg-neutral-950 group-hover:text-white">
@@ -716,7 +869,7 @@ function LandingPage({ onSelectCalculator }) {
   return (
     <motion.div key="landing-page" initial={false} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
       <section>
-        <div className="mx-auto grid max-w-[380px] gap-5 md:max-w-[780px] md:grid-cols-2 min-[1440px]:max-w-none min-[1440px]:grid-cols-5">
+        <div className="mx-auto flex max-w-[380px] flex-wrap justify-center gap-5 md:max-w-[780px] min-[1440px]:max-w-[1580px]">
           {calculators.map(renderCard)}
         </div>
       </section>
@@ -729,6 +882,7 @@ const calculators = [
   { id: "home-value", name: "Home Value vs. Market Investment Calculator", subtitle: "Did I make money buying and selling my house?", shortName: "Home vs. Market", description: "Use this calculator to understand if you made or lost money buying a property vs. investing in the market.", icon: ScaleIcon, component: HomeValueCalculator },
   { id: "auto-cost", name: "New Car vs. Used Car vs. Leased Car Calculator", subtitle: "Should I buy new or used?", shortName: "New/Used/Lease", description: "Use this calculator to compare the estimated cost of buying a new car versus a used car over time.", icon: CarIcon, component: AutoCostCalculator },
   { id: "college-savings", name: "College Savings Calculator", subtitle: "Am I saving enough for college?", shortName: "College", description: "Project college savings for one or more children with monthly contributions, index return assumptions, education inflation, and July tuition plus board withdrawals.", icon: GraduationIcon, component: CollegeSavingsCalculator },
+  { id: "generational-savings", name: "Generational Savings", subtitle: "How much should I save for my kids' future?", shortName: "Generational", description: "Plan for a larger family savings path that can cover college, cars, home down payments, and postgraduate degrees for your children.", icon: GiftIcon, component: GenerationalSavingsCalculator },
 
 ];
 
@@ -738,6 +892,7 @@ const calculatorRouteMap = {
   "auto-cost": "/auto-cost",
   "home-value": "/home-value-vs-market",
   "college-savings": "/college-savings",
+  "generational-savings": "/generational-savings",
 };
 
 const pageCopy = {
@@ -805,6 +960,17 @@ const pageCopy = {
     sections: [
       { title: "How to interpret the result", body: "A remaining balance means the modeled accounts covered the scheduled college withdrawals with money left over. A shortfall means at least one July bill exceeded that child's projected account value." },
       { title: "What to verify", body: "Confirm school-specific tuition, room and board, fees, financial aid, tax treatment, contribution limits, and the account type before relying on the estimate." },
+    ],
+  },
+  "generational-savings": {
+    title: "About this generational savings calculator",
+    body: [
+      "This generational savings calculator models a broad family savings plan for children across multiple future milestones: cars, college, postgraduate degrees, and home down payments.",
+      "The model uses today's estimated costs, inflates them to each milestone date, compounds a shared investment balance, and shows whether planned contributions cover the combined future goals.",
+    ],
+    sections: [
+      { title: "How to interpret the result", body: "A remaining balance means the modeled savings plan covered each milestone and still had funds left. A shortfall means one or more milestone costs exceeded the projected savings balance." },
+      { title: "What to verify", body: "Review realistic tuition, vehicle, graduate school, housing, gifting, tax, aid, and account-ownership assumptions before using the result for a real plan." },
     ],
   },
 };
