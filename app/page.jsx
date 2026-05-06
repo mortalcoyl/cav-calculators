@@ -3,7 +3,7 @@ import JsonLd from '../components/JsonLd';
 import { socialMetadata } from './seo';
 
 const title = "Financial Calculators for Real Estate, Cars, and Investing";
-const description = "Use free planning calculators to compare renting vs. buying, rental property returns, home value vs. market investing, and new vs. used vs. leased car costs.";
+const description = "Use free planning calculators to compare renting vs. buying, rental property returns, home value vs. market investing, car costs, and college savings.";
 
 export const metadata = {
   title,
@@ -26,6 +26,7 @@ export default function Page() {
             { "@type": "WebApplication", name: "Rental Property vs. Market Investment Calculator", applicationCategory: "FinanceApplication" },
             { "@type": "WebApplication", name: "Home Value vs. Market Investment Calculator", applicationCategory: "FinanceApplication" },
             { "@type": "WebApplication", name: "New Car vs. Used Car vs. Leased Car Calculator", applicationCategory: "FinanceApplication" },
+            { "@type": "WebApplication", name: "College Savings Calculator", applicationCategory: "FinanceApplication" },
           ],
         }}
       />

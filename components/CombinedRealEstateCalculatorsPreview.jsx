@@ -64,6 +64,21 @@ const AUTO_COST_EXPORT_COLUMNS = [
   { header: "Investment Value", key: "investmentValue" },
   { header: "Net Outcome", key: "outcome" },
 ];
+const COLLEGE_SAVINGS_EXPORT_COLUMNS = [
+  { header: "Year", key: "year" },
+  { header: "Month", key: "month" },
+  { header: "Combined Balance", key: "combinedBalance" },
+  { header: "Combined Withdrawn", key: "combinedWithdrawn" },
+  { header: "Combined Contributions", key: "combinedContributions" },
+  { header: "Combined Interest", key: "combinedInterest" },
+  { header: "Uncovered Shortfall", key: "shortfall" },
+];
+const SCHOOL_YEAR_OPTIONS = [
+  { value: -1, label: "Pre-K" },
+  { value: 0, label: "Kindergarten" },
+  ...Array.from({ length: 12 }, (_, index) => ({ value: index + 1, label: `Grade ${index + 1}` })),
+];
+const CHART_COLORS = ["#0284c7", "#059669", "#d97706", "#7c3aed", "#dc2626", "#0891b2"];
 
 function parseNumber(value) {
   const parsed = Number(String(value ?? "").replace(/[^0-9.-]/g, ""));
@@ -227,6 +242,7 @@ function TrendingUpIcon({ className = "" }) { return <IconBase className={classN
 function DollarIcon({ className = "" }) { return <IconBase className={className}><path d="M12 2v20" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6" /></IconBase>; }
 function BarChartIcon({ className = "" }) { return <IconBase className={className}><path d="M4 19V5" /><path d="M4 19h16" /><path d="M8 17v-5" /><path d="M12 17V8" /><path d="M16 17v-7" /></IconBase>; }
 function CarIcon({ className = "" }) { return <IconBase className={className}><path d="M5 17h14" /><path d="M6 17l1.5-6h9L18 17" /><path d="M8 11l1.2-3h5.6L16 11" /><path d="M7 17v2" /><path d="M17 17v2" /><path d="M8 15h.01" /><path d="M16 15h.01" /></IconBase>; }
+function GraduationIcon({ className = "" }) { return <IconBase className={className}><path d="M22 10 12 5 2 10l10 5 10-5Z" /><path d="M6 12v5c3 2 9 2 12 0v-5" /><path d="M22 10v6" /></IconBase>; }
 function ChevronDownIcon({ className = "" }) { return <IconBase className={className}><path d="m6 9 6 6 6-6" /></IconBase>; }
 
 function Card({ children, className = "" }) { return <div className={`rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm ${className}`}>{children}</div>; }
@@ -236,9 +252,9 @@ function AdditionalCostsSection({ children }) {
 function SectionTitle({ icon: Icon, title, subtitle }) {
   return <div className="mb-4 flex min-w-0 items-start gap-3"><div className="mt-1 shrink-0 rounded-xl bg-neutral-100 p-2"><Icon className="h-4 w-4 text-neutral-800" /></div><div className="min-w-0 flex-1"><h2 className="text-lg font-semibold tracking-tight text-neutral-950">{title}</h2>{subtitle && <p className="mt-1 max-w-full break-words text-sm leading-6 text-neutral-600">{subtitle}</p>}</div></div>;
 }
-function MoneyInput({ label, value, onChange, min = 0, max = 5000000, step = 1000, helperText }) {
+function MoneyInput({ label, value, onChange, min = 0, max = 5000000, step = 1000, helperText, displayValue }) {
   const setSafeValue = (nextValue) => onChange(clampNumber(parseNumber(nextValue), min, max));
-  return <div><div className="flex items-center justify-between gap-3"><label className="text-sm font-medium text-neutral-800">{label}</label><div className="flex min-w-[128px] items-center justify-end rounded-xl border border-neutral-200 bg-white px-3 py-1.5 focus-within:border-neutral-950"><span className="text-neutral-400">$</span><input value={numberFormatter.format(value)} onChange={(event) => setSafeValue(event.target.value)} className="w-full bg-transparent px-2 text-right text-sm font-semibold outline-none" inputMode="decimal" /></div></div>{helperText && <p className="mt-1 text-xs leading-5 text-neutral-500">{helperText}</p>}<input type="range" min={min} max={max} step={step} value={value} onChange={(event) => setSafeValue(event.target.value)} className="mt-2 w-full accent-neutral-950" /></div>;
+  return <div><div className="flex items-center justify-between gap-3"><label className="text-sm font-medium text-neutral-800">{label}</label><div className="flex min-w-[128px] items-center justify-end rounded-xl border border-neutral-200 bg-white px-3 py-1.5 focus-within:border-neutral-950"><span className="text-neutral-400">$</span><input value={displayValue ?? numberFormatter.format(value)} onChange={(event) => setSafeValue(event.target.value)} className="w-full bg-transparent px-2 text-right text-sm font-semibold outline-none" inputMode="decimal" /></div></div>{helperText && <p className="mt-1 text-xs leading-5 text-neutral-500">{helperText}</p>}<input type="range" min={min} max={max} step={step} value={value} onChange={(event) => setSafeValue(event.target.value)} className="mt-2 w-full accent-neutral-950" /></div>;
 }
 function PercentInput({ label, value, onChange, min = -10, max = 20, step = 0.1, helperText }) {
   const [draft, setDraft] = useState(String(value));
@@ -271,7 +287,7 @@ function ExportMenu({ title, exportData }) {
   return <div className="relative shrink-0"><button type="button" onClick={() => setOpen((value) => !value)} className="flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-800 shadow-sm transition hover:border-neutral-400 hover:bg-neutral-50">Export<ChevronDownIcon className="h-4 w-4" /></button>{open && <div className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-2xl border border-neutral-200 bg-white p-1 text-sm shadow-lg"><button type="button" onClick={() => { setOpen(false); window.print(); }} className="block w-full rounded-xl px-3 py-2 text-left font-semibold text-neutral-800 hover:bg-neutral-50">Print / save PDF</button><button type="button" disabled={!hasCsv} onClick={() => { setOpen(false); downloadCsv({ title, columns: exportData.columns, rows: exportData.rows }); }} className="block w-full rounded-xl px-3 py-2 text-left font-semibold text-neutral-800 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:text-neutral-400">Export CSV</button></div>}</div>;
 }
 function CalculatorFrame({ title, description, children, exportData }) {
-  return <motion.div key={title} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}><div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">{title}</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-600">{description}</p></div>{exportData && <ExportMenu title={title} exportData={exportData} />}</div>{children}</motion.div>;
+  return <motion.div key={title} initial={false} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}><div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">{title}</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-600">{description}</p></div>{exportData && <ExportMenu title={title} exportData={exportData} />}</div>{children}</motion.div>;
 }
 
 function calculateRentVsBuyScenario({ homePrice, downPaymentPct, rate, loanYears, rent, monthlyCashBeforeHousing, appreciation, marketReturn, rentInflation, propertyTaxPct, annualInsurance, maintenancePct, renovations, buyingClosingCostPct, sellingCostPct, years, incomeTaxRate, standardDeduction, includeTaxBenefit }) {
@@ -580,6 +596,98 @@ function HomeValueCalculator() {
   const winnerDetail = result.winner === "House" ? `by ${formatMoney(result.gap)} more than market investing.` : `by ${formatMoney(result.gap)} more than the house.`;
   return <CalculatorFrame title="Home Value vs. Market Investment Calculator" description="Compare buying a home against putting the same starting cash and monthly savings into the market." exportData={{ columns: HOME_VALUE_EXPORT_COLUMNS, rows: result.rows }}><div className="space-y-4"><div className="grid gap-4 md:grid-cols-3"><SmallStat label="Winner" value={`${result.winner} wins`} detail={winnerDetail} tone={result.winner === "House" ? "green" : "blue"} /><SmallStat label="Home Value Result" value={formatCompactMoney(result.houseResult)} tone="green" /><SmallStat label="Market Investment Result" value={formatCompactMoney(result.marketResult)} tone="blue" /></div><div className="grid items-stretch gap-5 xl:grid-cols-[430px_1fr]"><Card><SectionTitle icon={ScaleIcon} title="Main Assumptions" subtitle="Home price, expected sale price, financing, and hold period." /><div className="space-y-4"><MoneyInput label="Home price" value={homePrice} onChange={setHomePrice} max={5000000} step={10000} /><MoneyInput label="Sale price" value={salePrice} onChange={setSalePrice} max={8000000} step={10000} helperText={`Implied appreciation: ${formatPercent(result.impliedAnnualAppreciation)} / year`} /><PercentInput label="Down payment" value={downPaymentPct} onChange={setDownPaymentPct} min={0} max={50} helperText={`${formatMoney(result.downPayment)} cash into property`} /><PercentInput label="Mortgage rate" value={rate} onChange={setRate} min={0} max={10} helperText={`Monthly mortgage = ${formatMoney(result.mortgage)}`} /><RangeInput label="Years held" value={yearsHeld} onChange={setYearsHeld} min={1} max={30} suffix="yrs" /><RangeInput label="Loan term" value={loanTerm} onChange={setLoanTerm} min={10} max={30} step={5} suffix="yrs" /></div></Card><Card className="flex min-h-[560px] flex-col"><SectionTitle icon={BarChartIcon} title="Home value vs. market investment" subtitle={`${result.winner} is ahead by ${formatMoney(result.gap)} after ${yearsHeld} years.`} /><div className="min-h-[360px] flex-1"><ResponsiveContainer width="100%" height="100%"><LineChart data={result.rows}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="year" tickLine={false} axisLine={false} /><YAxis tickFormatter={formatCompactMoney} tickLine={false} axisLine={false} width={72} /><Tooltip content={<ChartTooltip />} /><Legend /><Line type="monotone" dataKey="homeValueResult" name="Home Value Result" stroke="#059669" strokeWidth={3} dot={false} /><Line type="monotone" dataKey="marketInvestmentResult" name="Market Investment Result" stroke="#0284c7" strokeWidth={3} dot={false} /></LineChart></ResponsiveContainer></div></Card></div><div className="grid gap-5 lg:grid-cols-2"><Card><SectionTitle icon={DollarIcon} title="Transaction & Ownership Costs" subtitle="Closing costs, sale costs, maintenance, taxes, insurance, and improvements." /><div className="grid gap-4 md:grid-cols-2"><PercentInput label="Buying closing costs" value={closingCostPct} onChange={setClosingCostPct} min={0} max={8} helperText={formatMoney(result.buyingClosingCosts)} /><PercentInput label="Selling costs" value={sellingCostPct} onChange={setSellingCostPct} min={0} max={10} helperText={formatMoney(result.sellingCosts)} /><PercentInput label="Maintenance" value={maintenancePct} onChange={setMaintenancePct} min={0} max={4} helperText={`${formatMoney(result.monthlyMaintenance)} / month`} /><PercentInput label="Property taxes" value={propertyTaxPct} onChange={setPropertyTaxPct} min={0} max={3} helperText={`${formatMoney(result.monthlyPropertyTax)} / month`} /><MoneyInput label="Annual insurance" value={insuranceAnnual} onChange={setInsuranceAnnual} max={20000} step={100} helperText={`${formatMoney(result.monthlyInsurance)} / month`} /><MoneyInput label="Renovations / improvements" value={renovations} onChange={setRenovations} max={1000000} step={5000} /></div></Card><Card><SectionTitle icon={TrendingUpIcon} title="Rent & Market Investment Alternative" subtitle="Rent avoided by owning and alternate market return assumptions." /><div className="grid gap-4 md:grid-cols-2"><MoneyInput label="Monthly rent if you did not own" value={monthlyRent} onChange={setMonthlyRent} max={20000} step={100} /><PercentInput label="Annual rent inflation" value={rentInflation} onChange={setRentInflation} min={0} max={8} /><div className="md:col-span-2"><MarketReturnPicker value={marketReturn} onChange={setMarketReturn} /></div></div></Card></div><OwnershipCostSummary title="Ownership cost summary" subtitle="Today's monthly cash waterfall for the home value path." startingLabel="Monthly rent if you did not own" startingAmount={monthlyRent} items={[{ label: "Less monthly mortgage", amount: result.mortgage }, { label: "Less property taxes", amount: result.monthlyPropertyTax }, { label: "Less insurance", amount: result.monthlyInsurance }, { label: "Less maintenance", amount: result.monthlyMaintenance }]} totalLabel="Monthly ownership cost" totalAmount={result.monthlyOwnershipCost} remainingLabel="Buyer surplus vs. renting today" remainingAmount={Math.max(0, monthlyRent - result.monthlyOwnershipCost)} note="This is a current-month comparison." /><Card><SectionTitle icon={BarChartIcon} title="Year-by-Year Comparison" subtitle="This shows estimated equity after sale versus the rent-and-invest alternative each year." /><div className="mt-2 max-h-[520px] overflow-y-auto rounded-2xl border border-neutral-200"><table className="w-full table-fixed border-separate border-spacing-0 text-left text-xs leading-tight"><thead className="sticky top-0 bg-white"><tr className="uppercase tracking-wide text-neutral-500">{HOME_VALUE_YEAR_TABLE_COLUMNS.map((column) => <th key={column} className="break-words border-b border-neutral-200 px-3 py-2">{column}</th>)}</tr></thead><tbody>{result.rows.map((row) => <tr key={row.year}><td className="border-b border-neutral-100 px-3 py-2 font-semibold">{row.year}</td><td>{formatCompactMoney(row.homeValue)}</td><td>{formatCompactMoney(row.mortgageBalance)}</td><td>{formatCompactMoney(row.equityAfterSale)}</td><td>{formatCompactMoney(row.annualRentAvoided)}</td><td>{formatCompactMoney(row.marketInvestmentResult)}</td><td>{formatCompactMoney(row.houseAdvantage)}</td></tr>)}</tbody></table></div></Card></div></CalculatorFrame>;
 }
+
+function makeCollegeChildren(count, currentChildren = []) {
+  return Array.from({ length: count }, (_, index) => currentChildren[index] || { id: `child-${index + 1}`, currentGrade: index === 0 ? 0 : index === 1 ? 2 : Math.max(-1, 2 - index * 2) });
+}
+function calculateCollegeSavingsScenario({ children, startingAmount, monthlyContribution, annualTuition, annualBoard, marketReturn, inflation }) {
+  const monthlyRate = marketReturn / 100 / 12;
+  const annualCollegeCost = annualTuition + annualBoard;
+  const childPlans = children.map((child, index) => {
+    const firstJulyMonth = 2 + Math.max(0, 12 - child.currentGrade) * 12;
+    return { ...child, id: child.id || `child-${index + 1}`, name: `Child ${index + 1}`, firstJulyMonth, finalMonth: firstJulyMonth + 36 };
+  });
+  const horizonMonths = Math.max(12, ...childPlans.map((child) => child.finalMonth));
+  const accounts = childPlans.map((child) => ({ ...child, balance: startingAmount, contributions: startingAmount, interest: 0, withdrawn: 0, shortfall: 0 }));
+  const rows = [{ year: 0, month: 0, combinedBalance: Math.round(startingAmount * accounts.length), combinedWithdrawn: 0, combinedContributions: Math.round(startingAmount * accounts.length), combinedInterest: 0, shortfall: 0, ...Object.fromEntries(accounts.map((account) => [account.name, Math.round(account.balance)])) }];
+
+  for (let month = 1; month <= horizonMonths; month++) {
+    accounts.forEach((account) => {
+      if (month <= account.finalMonth) {
+        account.balance += monthlyContribution;
+        account.contributions += monthlyContribution;
+      }
+      const interest = account.balance * monthlyRate;
+      account.balance = Math.max(0, account.balance + interest);
+      account.interest += interest;
+      const collegeYear = [0, 12, 24, 36].findIndex((offset) => month === account.firstJulyMonth + offset);
+      if (collegeYear >= 0) {
+        const inflatedCost = annualCollegeCost * safePow(1 + inflation / 100, month / 12);
+        let remainingCost = inflatedCost;
+        const ownWithdrawal = Math.min(account.balance, remainingCost);
+        account.balance -= ownWithdrawal;
+        account.withdrawn += ownWithdrawal;
+        remainingCost -= ownWithdrawal;
+        if (remainingCost > 0) {
+          accounts.forEach((sourceAccount) => {
+            if (sourceAccount.id === account.id || remainingCost <= 0) return;
+            const sharedWithdrawal = Math.min(sourceAccount.balance, remainingCost);
+            sourceAccount.balance -= sharedWithdrawal;
+            sourceAccount.withdrawn += sharedWithdrawal;
+            remainingCost -= sharedWithdrawal;
+          });
+        }
+        account.shortfall += Math.max(0, remainingCost);
+      }
+    });
+    const combinedBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
+    const combinedWithdrawn = accounts.reduce((sum, account) => sum + account.withdrawn, 0);
+    const combinedContributions = accounts.reduce((sum, account) => sum + account.contributions, 0);
+    const combinedInterest = accounts.reduce((sum, account) => sum + account.interest, 0);
+    const shortfall = accounts.reduce((sum, account) => sum + account.shortfall, 0);
+    rows.push({ year: Number((month / 12).toFixed(1)), month, combinedBalance: Math.round(combinedBalance), combinedWithdrawn: Math.round(combinedWithdrawn), combinedContributions: Math.round(combinedContributions), combinedInterest: Math.round(combinedInterest), shortfall: Math.round(shortfall), ...Object.fromEntries(accounts.map((account) => [account.name, Math.round(account.balance)])) });
+  }
+  const last = rows[rows.length - 1];
+  const peakBalance = Math.max(...rows.map((row) => row.combinedBalance));
+  const rawEndingBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
+  const rawShortfall = accounts.reduce((sum, account) => sum + account.shortfall, 0);
+  return { rows, accounts: accounts.map((account) => ({ ...account, balance: Math.round(account.balance), contributions: Math.round(account.contributions), interest: Math.round(account.interest), withdrawn: Math.round(account.withdrawn), shortfall: Math.round(account.shortfall) })), endingBalance: last.combinedBalance, peakBalance: Math.round(peakBalance), totalWithdrawn: last.combinedWithdrawn, totalContributions: last.combinedContributions, totalInterest: last.combinedInterest, shortfall: last.shortfall, rawEndingBalance, rawShortfall, horizonYears: Number((horizonMonths / 12).toFixed(1)) };
+}
+function findCollegeZeroBalanceContribution({ children, startingAmount, annualTuition, annualBoard, marketReturn, inflation }) {
+  const scenarioFor = (monthlyContribution) => calculateCollegeSavingsScenario({ children, startingAmount, monthlyContribution, annualTuition, annualBoard, marketReturn, inflation });
+  const isFunded = (scenario) => scenario.rawShortfall <= 0.01;
+  const zeroContributionScenario = scenarioFor(0);
+  if (isFunded(zeroContributionScenario)) return 0;
+  let low = 0;
+  let high = 100;
+  while (!isFunded(scenarioFor(high)) && high < 100000) high *= 2;
+  for (let index = 0; index < 36; index++) {
+    const mid = (low + high) / 2;
+    if (isFunded(scenarioFor(mid))) high = mid;
+    else low = mid;
+  }
+  return Math.ceil(high * 1000) / 1000;
+}
+function SchoolYearSelect({ label, value, onChange }) {
+  return <div><label className="text-sm font-medium text-neutral-800">{label}</label><select value={value} onChange={(event) => onChange(parseNumber(event.target.value))} className="mt-2 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-900 outline-none focus:border-neutral-950">{SCHOOL_YEAR_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>;
+}
+function CollegeSavingsCalculator() {
+  const [childCount, setChildCount] = useState(2);
+  const [children, setChildren] = useState(() => makeCollegeChildren(2));
+  const [annualTuition, setAnnualTuition] = useState(35000);
+  const [annualBoard, setAnnualBoard] = useState(18000);
+  const [startingAmount, setStartingAmount] = useState(25000);
+  const [monthlyContribution, setMonthlyContribution] = useState(750);
+  const [marketReturn, setMarketReturn] = useState(10);
+  const [inflation, setInflation] = useState(4);
+  const [showTable, setShowTable] = useState(false);
+  const setSafeChildCount = (nextCount) => { const count = clampNumber(parseNumber(nextCount), 1, 6); setChildCount(count); setChildren((current) => makeCollegeChildren(count, current)); };
+  const updateChildGrade = (index, currentGrade) => setChildren((current) => current.map((child, childIndex) => childIndex === index ? { ...child, currentGrade } : child));
+  const setZeroEndingContribution = () => setMonthlyContribution(findCollegeZeroBalanceContribution({ children, startingAmount, annualTuition, annualBoard, marketReturn, inflation }));
+  const result = useMemo(() => calculateCollegeSavingsScenario({ children, startingAmount, monthlyContribution, annualTuition, annualBoard, marketReturn, inflation }), [children, startingAmount, monthlyContribution, annualTuition, annualBoard, marketReturn, inflation]);
+  const exportColumns = useMemo(() => [...COLLEGE_SAVINGS_EXPORT_COLUMNS, ...result.accounts.map((account) => ({ header: `${account.name} Balance`, key: account.name }))], [result.accounts]);
+  return <CalculatorFrame title="College Savings Calculator" description="Project education savings by child, with monthly contributions, index-return assumptions, tuition and board inflation, and lump-sum July withdrawals for each college year." exportData={{ columns: exportColumns, rows: result.rows }}><div className="space-y-4"><div className="grid gap-4 md:grid-cols-4"><SmallStat label="Ending combined balance" value={formatCompactMoney(result.endingBalance)} tone={result.shortfall > 0 ? "amber" : "green"} /><SmallStat label="College costs paid" value={formatCompactMoney(result.totalWithdrawn)} tone="blue" /><SmallStat label="Investment growth" value={formatCompactMoney(result.totalInterest)} tone="green" /><SmallStat label="Uncovered shortfall" value={formatCompactMoney(result.shortfall)} tone={result.shortfall > 0 ? "amber" : "neutral"} /></div><div className="grid items-stretch gap-5 xl:grid-cols-[430px_1fr]"><Card><SectionTitle icon={GraduationIcon} title="Family & school timing" subtitle="Each child gets a separate account, using the same starting amount and monthly contribution." /><div className="space-y-4"><RangeInput label="# of children" value={childCount} onChange={setSafeChildCount} min={1} max={6} suffix="" /><div className="grid gap-4 sm:grid-cols-2">{children.map((child, index) => <SchoolYearSelect key={child.id} label={`Child ${index + 1} current year`} value={child.currentGrade} onChange={(grade) => updateChildGrade(index, grade)} />)}</div><MoneyInput label="Starting amount per child" value={startingAmount} onChange={setStartingAmount} max={500000} step={1000} /><MoneyInput label="Monthly contribution per child" value={monthlyContribution} onChange={setMonthlyContribution} max={10000} step={50} displayValue={numberFormatter.format(Math.round(monthlyContribution))} /><button type="button" onClick={setZeroEndingContribution} className="w-full rounded-xl border border-neutral-950 bg-neutral-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-neutral-800">End account with $0</button></div></Card><Card className="flex min-h-[560px] flex-col"><SectionTitle icon={BarChartIcon} title="Combined account value" subtitle={`Combined balances across ${childCount} ${childCount === 1 ? "child" : "children"} over ${result.horizonYears} years.`} /><div className="h-[360px] flex-1"><ResponsiveContainer width="100%" height="100%"><LineChart data={result.rows}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="year" tickLine={false} axisLine={false} /><YAxis tickFormatter={formatCompactMoney} tickLine={false} axisLine={false} width={72} /><Tooltip content={<ChartTooltip />} /><Legend /><Line type="monotone" dataKey="combinedBalance" name="Combined Balance" stroke="#059669" strokeWidth={3} dot={false} /><Line type="monotone" dataKey="combinedWithdrawn" name="Cumulative Withdrawals" stroke="#0284c7" strokeWidth={2} dot={false} strokeDasharray="6 4" />{result.shortfall > 0 && <Line type="monotone" dataKey="shortfall" name="Shortfall" stroke="#d97706" strokeWidth={2} dot={false} strokeDasharray="3 5" />}</LineChart></ResponsiveContainer></div></Card></div><div className="grid gap-5 lg:grid-cols-2"><Card><SectionTitle icon={DollarIcon} title="College cost assumptions" subtitle="Tuition and board are withdrawn together every July during each four-year college period." /><div className="grid gap-4 md:grid-cols-2"><MoneyInput label="Annual tuition" value={annualTuition} onChange={setAnnualTuition} max={150000} step={1000} /><MoneyInput label="Annual board" value={annualBoard} onChange={setAnnualBoard} max={75000} step={500} /><PercentInput label="Education inflation" value={inflation} onChange={setInflation} min={0} max={12} helperText="Applied to each future July withdrawal." /><div><div className="text-sm font-medium text-neutral-800">Current annual cost</div><div className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-bold text-neutral-950">{formatMoney(annualTuition + annualBoard)}</div></div></div></Card><Card><SectionTitle icon={TrendingUpIcon} title="Investment assumptions" subtitle="Use the same index-fund return presets as the other calculators." /><MarketReturnPicker value={marketReturn} onChange={setMarketReturn} /></Card></div><Card><SectionTitle icon={BarChartIcon} title="Individual account values" subtitle="Separate balance lines show each child's savings rising with contributions and falling after July withdrawals." /><div className="h-[420px]"><ResponsiveContainer width="100%" height="100%"><LineChart data={result.rows}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="year" tickLine={false} axisLine={false} /><YAxis tickFormatter={formatCompactMoney} tickLine={false} axisLine={false} width={72} /><Tooltip content={<ChartTooltip />} /><Legend />{result.accounts.map((account, index) => <Line key={account.name} type="monotone" dataKey={account.name} name={account.name} stroke={CHART_COLORS[index % CHART_COLORS.length]} strokeWidth={3} dot={false} />)}</LineChart></ResponsiveContainer></div></Card><Card><div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><SectionTitle icon={CalculatorIcon} title="Child account summary" subtitle="Balances, contributions, earnings, withdrawals, and any uncovered college cost." /><button type="button" onClick={() => setShowTable((value) => !value)} className="rounded-full border border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50">{showTable ? "Hide monthly table" : "Show monthly table"}</button></div><div className="mt-2 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{result.accounts.map((account) => <div key={account.name} className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4"><div className="text-sm font-bold text-neutral-950">{account.name}</div><div className="mt-3 grid grid-cols-2 gap-3 text-xs"><span className="text-neutral-500">Ending balance</span><strong className="text-right">{formatMoney(account.balance)}</strong><span className="text-neutral-500">Contributed</span><strong className="text-right">{formatMoney(account.contributions)}</strong><span className="text-neutral-500">Interest earned</span><strong className="text-right">{formatMoney(account.interest)}</strong><span className="text-neutral-500">Withdrawn</span><strong className="text-right">{formatMoney(account.withdrawn)}</strong><span className="text-neutral-500">Shortfall</span><strong className="text-right">{formatMoney(account.shortfall)}</strong></div></div>)}</div>{showTable && <div className="mt-4 max-h-[520px] overflow-y-auto rounded-2xl border border-neutral-200"><table className="w-full table-fixed border-separate border-spacing-0 text-left text-xs leading-tight"><thead className="sticky top-0 bg-white"><tr className="uppercase tracking-wide text-neutral-500"><th className="border-b border-neutral-200 px-3 py-2">Year</th><th className="border-b border-neutral-200 px-3 py-2">Combined</th><th className="border-b border-neutral-200 px-3 py-2">Withdrawn</th><th className="border-b border-neutral-200 px-3 py-2">Interest</th><th className="border-b border-neutral-200 px-3 py-2">Shortfall</th></tr></thead><tbody>{result.rows.filter((row) => row.month % 12 === 0 || row.month === 0).map((row) => <tr key={row.month}><td className="border-b border-neutral-100 px-3 py-2 font-semibold">{row.year}</td><td className="border-b border-neutral-100 px-3 py-2">{formatCompactMoney(row.combinedBalance)}</td><td className="border-b border-neutral-100 px-3 py-2">{formatCompactMoney(row.combinedWithdrawn)}</td><td className="border-b border-neutral-100 px-3 py-2">{formatCompactMoney(row.combinedInterest)}</td><td className="border-b border-neutral-100 px-3 py-2">{formatCompactMoney(row.shortfall)}</td></tr>)}</tbody></table></div>}</Card></div></CalculatorFrame>;
+}
 function LandingPage({ onSelectCalculator }) {
   const renderCard = (calculator) => {
     const Icon = calculator.icon;
@@ -606,9 +714,9 @@ function LandingPage({ onSelectCalculator }) {
   };
 
   return (
-    <motion.div key="landing-page" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+    <motion.div key="landing-page" initial={false} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
       <section>
-        <div className="mx-auto grid max-w-[380px] gap-5 md:max-w-[780px] md:grid-cols-2 min-[1440px]:max-w-none min-[1440px]:grid-cols-4">
+        <div className="mx-auto grid max-w-[380px] gap-5 md:max-w-[780px] md:grid-cols-2 min-[1440px]:max-w-none min-[1440px]:grid-cols-5">
           {calculators.map(renderCard)}
         </div>
       </section>
@@ -620,6 +728,7 @@ const calculators = [
   { id: "rental-property-2", name: "Rental Property vs. Market Investment Calculator", subtitle: "Should I buy a property or invest the money?", shortName: "Rental vs. Market", description: "Use this calculator to decide if a rental property will be more profitable vs. a simple market investment over time. Inputs include real estate values, rental income, inflation, maintenance, and 30 year index investment projections.", icon: BuildingIcon, component: RentalPropertyCalculator },
   { id: "home-value", name: "Home Value vs. Market Investment Calculator", subtitle: "Did I make money buying and selling my house?", shortName: "Home vs. Market", description: "Use this calculator to understand if you made or lost money buying a property vs. investing in the market.", icon: ScaleIcon, component: HomeValueCalculator },
   { id: "auto-cost", name: "New Car vs. Used Car vs. Leased Car Calculator", subtitle: "Should I buy new or used?", shortName: "New/Used/Lease", description: "Use this calculator to compare the estimated cost of buying a new car versus a used car over time.", icon: CarIcon, component: AutoCostCalculator },
+  { id: "college-savings", name: "College Savings Calculator", subtitle: "Am I saving enough for college?", shortName: "College", description: "Project college savings for one or more children with monthly contributions, index return assumptions, education inflation, and July tuition plus board withdrawals.", icon: GraduationIcon, component: CollegeSavingsCalculator },
 
 ];
 
@@ -628,6 +737,7 @@ const calculatorRouteMap = {
   "rental-property-2": "/rental-property-eval",
   "auto-cost": "/auto-cost",
   "home-value": "/home-value-vs-market",
+  "college-savings": "/college-savings",
 };
 
 const pageCopy = {
@@ -686,6 +796,17 @@ const pageCopy = {
       { title: "What to verify", body: "Confirm real loan or lease quotes, insurance premiums, maintenance expectations, taxes, registration, mileage limits, residual values, and resale assumptions for the specific vehicle." },
     ],
   },
+  "college-savings": {
+    title: "About this college savings calculator",
+    body: [
+      "This college savings calculator projects separate education accounts for one or more children. It models starting balances, monthly contributions, market return assumptions, education inflation, and four July withdrawals for tuition plus board.",
+      "The model keeps each child's account separate while also showing a combined household view, including total contributions, estimated investment growth, cumulative withdrawals, ending balance, and uncovered shortfall if costs exceed available savings.",
+    ],
+    sections: [
+      { title: "How to interpret the result", body: "A remaining balance means the modeled accounts covered the scheduled college withdrawals with money left over. A shortfall means at least one July bill exceeded that child's projected account value." },
+      { title: "What to verify", body: "Confirm school-specific tuition, room and board, fees, financial aid, tax treatment, contribution limits, and the account type before relying on the estimate." },
+    ],
+  },
 };
 
 function SeoPageCopy({ pageId }) {
@@ -730,7 +851,7 @@ export default function CombinedRealEstateCalculatorsPreview({ initialCalculator
   return (
     <main className="min-h-screen bg-[#f7f7f5] px-4 py-6 text-neutral-950 sm:px-6 lg:px-8">
       <div className="mx-auto flex min-h-[calc(100vh-48px)] max-w-7xl flex-col">
-        <header className="mb-14 flex flex-col gap-5 border-b border-neutral-200 pb-6 lg:flex-row lg:items-start lg:justify-between"><div><a href="/" className="block text-left"><h1 className="text-[2.025rem] font-semibold leading-none tracking-tight text-neutral-950 sm:text-[2.25rem]">Financial Calculators</h1></a></div><nav className="hidden self-start lg:flex" aria-label="Calculator selector">{calculators.map((calculator) => { const Icon = calculator.icon; const active = calculator.id === activeCalculator; return <a key={calculator.id} href={calculatorRouteMap[calculator.id]} className={active ? "flex items-center gap-2 rounded-xl bg-neutral-950 px-6 py-2 text-sm font-semibold text-white transition" : "flex items-center gap-2 rounded-xl px-6 py-2 text-sm font-semibold text-neutral-600 transition hover:bg-neutral-100 hover:text-neutral-950"}><Icon className="h-4 w-4" />{calculator.shortName}</a>; })}</nav><div className="relative lg:hidden"><button type="button" onClick={() => setMobileOpen((open) => !open)} className="flex w-full items-center justify-between rounded-2xl border border-neutral-200 bg-white p-4 text-left shadow-sm"><span><span className="block text-sm font-semibold">{selected?.name || "Real Estate Calculators"}</span><span className="mt-1 block text-xs text-neutral-500">Tap to switch calculators</span></span><ChevronDownIcon className="h-5 w-5 text-neutral-500" /></button>{mobileOpen && <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-lg">{calculators.map((calculator) => { const Icon = calculator.icon; return <button key={calculator.id} type="button" onClick={() => { setActiveCalculator(calculator.id); setMobileOpen(false); }} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm hover:bg-neutral-50"><Icon className="h-4 w-4 text-neutral-500" /><span><span className="block font-semibold text-neutral-950">{calculator.name}</span><span className="block text-xs text-neutral-500">{calculator.description}</span></span></button>; })}</div>}</div></header>
+        <header className="mb-14 flex flex-col gap-5 border-b border-neutral-200 pb-6 lg:flex-row lg:items-start lg:justify-between"><div><a href="/" className="block text-left"><h1 className="text-[2.025rem] font-semibold leading-none tracking-tight text-neutral-950 sm:text-[2.25rem]">Financial Calculators</h1></a></div><nav className="hidden self-start lg:flex" aria-label="Calculator selector">{calculators.map((calculator) => { const Icon = calculator.icon; const active = calculator.id === activeCalculator; return <a key={calculator.id} href={calculatorRouteMap[calculator.id]} className={active ? "flex items-center gap-2 rounded-xl bg-neutral-950 px-4 py-2 text-sm font-semibold text-white transition" : "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-neutral-600 transition hover:bg-neutral-100 hover:text-neutral-950"}><Icon className="h-4 w-4" />{calculator.shortName}</a>; })}</nav><div className="relative lg:hidden"><button type="button" onClick={() => setMobileOpen((open) => !open)} className="flex w-full items-center justify-between rounded-2xl border border-neutral-200 bg-white p-4 text-left shadow-sm"><span><span className="block text-sm font-semibold">{selected?.name || "Financial Calculators"}</span><span className="mt-1 block text-xs text-neutral-500">Tap to switch calculators</span></span><ChevronDownIcon className="h-5 w-5 text-neutral-500" /></button>{mobileOpen && <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-lg">{calculators.map((calculator) => { const Icon = calculator.icon; return <button key={calculator.id} type="button" onClick={() => { setActiveCalculator(calculator.id); setMobileOpen(false); }} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm hover:bg-neutral-50"><Icon className="h-4 w-4 text-neutral-500" /><span><span className="block font-semibold text-neutral-950">{calculator.name}</span><span className="block text-xs text-neutral-500">{calculator.description}</span></span></button>; })}</div>}</div></header>
         <div className="pb-10">
           {ActiveComponent ? <ActiveComponent /> : <LandingPage onSelectCalculator={setActiveCalculator} />}
           <SeoPageCopy pageId={activeCalculator} />
