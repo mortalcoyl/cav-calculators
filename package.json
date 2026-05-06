@@ -10,6 +10,10 @@
     "audit-check": "npm audit --omit=dev"
   },
   "dependencies": {
+    "d3": "^7.9.0",
+    "d3-array": "^3.2.4",
+    "d3-format": "^3.1.2",
+    "d3-scale": "^4.0.2",
     "framer-motion": "^11.11.17",
     "next": "^16.2.4",
     "react": "^19.2.5",
