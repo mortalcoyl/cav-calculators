@@ -7,6 +7,7 @@ export default function sitemap() {
     "/rental-property-eval",
     "/home-value-vs-market",
     "/auto-cost",
+    "/retirement",
     "/college-savings",
     "/generational-savings",
   ];
