@@ -10,6 +10,7 @@
     "audit-check": "npm audit --omit=dev"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "d3": "^7.9.0",
     "d3-array": "^3.2.4",
     "d3-format": "^3.1.2",
