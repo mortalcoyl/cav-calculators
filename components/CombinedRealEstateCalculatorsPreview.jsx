@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceArea } from "recharts";
 
 const numberFormatter = new Intl.NumberFormat("en-US");
 const moneyFormatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -115,6 +115,72 @@ const RETIREMENT_EXPORT_COLUMNS = [
   { header: "Gross Withdrawal", key: "grossWithdrawal" },
   { header: "After Tax Spending", key: "afterTaxSpending" },
   { header: "Shortfall", key: "shortfall" },
+];
+const MEDICAL_COST_EXPORT_COLUMNS = [
+  { header: "Age", key: "age" },
+  { header: "Year", key: "year" },
+  { header: "Yearly Invested Amount", key: "yearlyInvestedAmount" },
+  { header: "Employee Cost", key: "employeeCost" },
+  { header: "Cash Medical Cost", key: "cashMedicalCost" },
+  { header: "Invested Balance", key: "investedBalance" },
+  { header: "Cumulative Invested", key: "cumulativeInvested" },
+  { header: "Cumulative Employee Costs", key: "cumulativeEmployeeCosts" },
+  { header: "Cumulative Cash Costs", key: "cumulativeCashCosts" },
+  { header: "Shortfall", key: "shortfall" },
+];
+const MEDICAL_HEALTH_STATUS_OPTIONS = [
+  { id: "healthy", label: "Healthy", color: "#639922" },
+  { id: "unhealthy", label: "Unhealthy", color: "#BA7517" },
+  { id: "very-unhealthy", label: "Very unhealthy", color: "#E24B4A" },
+];
+const MEDICAL_ANNUAL_COSTS_BY_AGE = [
+  { age: 20, healthy: 2400, unhealthy: 7000, "very-unhealthy": 18000 },
+  { age: 25, healthy: 2700, unhealthy: 8500, "very-unhealthy": 23000 },
+  { age: 30, healthy: 3100, unhealthy: 10500, "very-unhealthy": 29000 },
+  { age: 35, healthy: 3600, unhealthy: 13000, "very-unhealthy": 37000 },
+  { age: 40, healthy: 4200, unhealthy: 16000, "very-unhealthy": 47000 },
+  { age: 45, healthy: 5200, unhealthy: 19500, "very-unhealthy": 59000 },
+  { age: 50, healthy: 6500, unhealthy: 23500, "very-unhealthy": 72000 },
+  { age: 55, healthy: 8000, unhealthy: 28000, "very-unhealthy": 85000 },
+  { age: 60, healthy: 9500, unhealthy: 33000, "very-unhealthy": 98000 },
+  { age: 65, healthy: 13000, unhealthy: 42000, "very-unhealthy": 118000 },
+  { age: 70, healthy: 17000, unhealthy: 54000, "very-unhealthy": 145000 },
+  { age: 75, healthy: 25000, unhealthy: 70000, "very-unhealthy": 178000 },
+  { age: 80, healthy: 38000, unhealthy: 88000, "very-unhealthy": 215000 },
+  { age: 85, healthy: 52000, unhealthy: 108000, "very-unhealthy": 248000 },
+  { age: 90, healthy: 66000, unhealthy: 126000, "very-unhealthy": 272000 },
+  { age: 95, healthy: 78000, unhealthy: 143000, "very-unhealthy": 292000 },
+  { age: 100, healthy: 92000, unhealthy: 160000, "very-unhealthy": 310000 },
+];
+const MEDICAL_SEX_COSTS_BY_AGE = [
+  { age: 20, women: 5800, men: 3200 },
+  { age: 23, women: 7800, men: 3800 },
+  { age: 27, women: 8500, men: 4400 },
+  { age: 30, women: 8200, men: 4800 },
+  { age: 33, women: 7800, men: 5500 },
+  { age: 37, women: 7000, men: 6600 },
+  { age: 40, women: 6400, men: 8000 },
+  { age: 43, women: 6800, men: 10000 },
+  { age: 47, women: 7800, men: 12500 },
+  { age: 50, women: 9500, men: 15000 },
+  { age: 53, women: 11500, men: 17500 },
+  { age: 57, women: 13500, men: 19500 },
+  { age: 60, women: 16500, men: 21500 },
+  { age: 63, women: 20000, men: 24000 },
+  { age: 65, women: 24000, men: 26500 },
+  { age: 68, women: 30000, men: 32000 },
+  { age: 70, women: 36000, men: 37000 },
+  { age: 73, women: 44000, men: 44000 },
+  { age: 75, women: 52000, men: 52000 },
+  { age: 78, women: 65000, men: 61000 },
+  { age: 80, women: 78000, men: 70000 },
+  { age: 83, women: 95000, men: 80000 },
+  { age: 85, women: 110000, men: 88000 },
+  { age: 88, women: 128000, men: 97000 },
+  { age: 90, women: 142000, men: 104000 },
+  { age: 93, women: 155000, men: 112000 },
+  { age: 97, women: 165000, men: 118000 },
+  { age: 100, women: 172000, men: 124000 },
 ];
 const SCHOOL_YEAR_OPTIONS = [
   { value: -1, label: "Pre-K" },
@@ -328,6 +394,7 @@ function BarChartIcon({ className = "" }) { return <IconBase className={classNam
 function CarIcon({ className = "" }) { return <IconBase className={className}><path d="M5 17h14" /><path d="M6 17l1.5-6h9L18 17" /><path d="M8 11l1.2-3h5.6L16 11" /><path d="M7 17v2" /><path d="M17 17v2" /><path d="M8 15h.01" /><path d="M16 15h.01" /></IconBase>; }
 function GraduationIcon({ className = "" }) { return <IconBase className={className}><path d="M22 10 12 5 2 10l10 5 10-5Z" /><path d="M6 12v5c3 2 9 2 12 0v-5" /><path d="M22 10v6" /></IconBase>; }
 function GiftIcon({ className = "" }) { return <IconBase className={className}><path d="M20 12v9H4v-9" /><path d="M2 7h20v5H2z" /><path d="M12 22V7" /><path d="M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7Z" /><path d="M12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7Z" /></IconBase>; }
+function MedicalIcon({ className = "" }) { return <IconBase className={className}><path d="M4 21h16" /><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" /><path d="M10 7h4" /><path d="M12 5v4" /><path d="M9 12h.01" /><path d="M15 12h.01" /><path d="M9 16h.01" /><path d="M15 16h.01" /><path d="M11 21v-4h2v4" /></IconBase>; }
 function ChevronDownIcon({ className = "" }) { return <IconBase className={className}><path d="m6 9 6 6 6-6" /></IconBase>; }
 
 function Card({ children, className = "" }) { return <div className={`rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm ${className}`}>{children}</div>; }
@@ -378,8 +445,8 @@ function ExportMenu({ title, exportData }) {
   const hasCsv = Boolean(exportData?.columns?.length && exportData?.rows?.length);
   return <div className="relative shrink-0"><button type="button" onClick={() => setOpen((value) => !value)} className="flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-800 shadow-sm transition hover:border-neutral-400 hover:bg-neutral-50">Export<ChevronDownIcon className="h-4 w-4" /></button>{open && <div className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-2xl border border-neutral-200 bg-white p-1 text-sm shadow-lg"><button type="button" onClick={() => { setOpen(false); window.print(); }} className="block w-full rounded-xl px-3 py-2 text-left font-semibold text-neutral-800 hover:bg-neutral-50">Print / save PDF</button><button type="button" disabled={!hasCsv} onClick={() => { setOpen(false); downloadCsv({ title, columns: exportData.columns, rows: exportData.rows }); }} className="block w-full rounded-xl px-3 py-2 text-left font-semibold text-neutral-800 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:text-neutral-400">Export CSV</button></div>}</div>;
 }
-function CalculatorFrame({ title, description, children, exportData }) {
-  return <motion.div key={title} initial={false} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}><div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">{title}</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-600">{description}</p></div>{exportData && <ExportMenu title={title} exportData={exportData} />}</div>{children}</motion.div>;
+function CalculatorFrame({ title, description, children, exportData, badge }) {
+  return <motion.div key={title} initial={false} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}><div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex flex-wrap items-center gap-2"><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">{title}</h2>{badge && <span className="rounded-full bg-fuchsia-600 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-white">{badge}</span>}</div><p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-600">{description}</p></div>{exportData && <ExportMenu title={title} exportData={exportData} />}</div>{children}</motion.div>;
 }
 
 function calculateRentVsBuyScenario({ homePrice, downPaymentPct, rate, loanYears, rent, monthlyCashBeforeHousing, appreciation, marketReturn, rentInflation, propertyTaxPct, annualInsurance, maintenancePct, renovations, buyingClosingCostPct, transferTaxPct = 0, recordationTaxPct = 0, additionalCosts = 0, sellingCostPct, years, incomeTaxRate, standardDeduction, includeTaxBenefit }) {
@@ -996,6 +1063,144 @@ function RetirementCalculator() {
   return <CalculatorFrame title="Retirement Calculator" description="Project net worth at retirement, inflation-adjusted spending, retirement withdrawals, and an auto-filled 2025 federal marginal tax bracket." exportData={{ columns: RETIREMENT_EXPORT_COLUMNS, rows: result.rows }}><div className="space-y-4"><div className="grid gap-4 md:grid-cols-4"><SmallStat label="At retirement" value={formatCompactMoney(result.portfolioAtRetirement)} tone="green" /><SmallStat label="First-year spending" value={formatCompactMoney(result.firstYearSpending)} detail="Inflation adjusted" tone="blue" /><SmallStat label="Tax bracket" value={formatPercent(result.taxRate)} detail={result.retirementTaxBracket.filingStatusLabel} /><SmallStat label="Retirement runway" value={`${result.retirementYearsFunded} yrs`} detail={fundedDetail} tone={result.depletedAge ? "amber" : "green"} /></div><div className="grid gap-5 xl:grid-cols-[430px_1fr]"><div><Card><SectionTitle icon={CalculatorIcon} title="Main Assumptions" subtitle="Current age, retirement age, starting net worth, annual savings, and inflation." /><div className="space-y-4"><RangeInput label="Current age" value={currentAge} onChange={safeSetCurrentAge} min={18} max={90} suffix="yrs" /><RangeInput label="Retirement age" value={retirementAge} onChange={safeSetRetirementAge} min={currentAge} max={95} suffix="yrs" helperText={`${result.yearsToRetirement} years until retirement`} /><MoneyInput label="Current net worth" value={currentNetWorth} onChange={setCurrentNetWorth} max={10000000} step={10000} /><MoneyInput label="Yearly contribution" value={yearlyContribution} onChange={setYearlyContribution} max={500000} step={1000} helperText={`${formatMoney(result.totalContributions)} contributed before retirement`} /><PercentInput label="Anticipated inflation" value={inflation} onChange={setInflation} min={0} max={10} helperText="Used to inflate retirement spending." /><label className="flex items-start gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-sm leading-6 text-neutral-700"><input type="checkbox" checked={useLifeExpectancy} onChange={(event) => setUseLifeExpectancy(event.target.checked)} className="mt-1 h-4 w-4 accent-neutral-950" /><span><strong className="text-neutral-950">Use life expectancy cap</strong><br />Caps the graph at the selected age.</span></label>{useLifeExpectancy && <RangeInput label="Life expectancy" value={lifeExpectancy} onChange={setLifeExpectancy} min={0} max={120} suffix="yrs" helperText={`Graph ends at age ${lifeExpectancy}.`} />}</div></Card></div><Card className="flex h-full flex-col"><SectionTitle icon={BarChartIcon} title="Retirement path" subtitle={`${formatMoney(result.portfolioAtRetirement)} projected at age ${retirementAge}.`} /><div className="min-h-0 flex-1"><ResponsiveContainer width="100%" height="100%"><LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="age" tickLine={false} axisLine={false} /><YAxis tickFormatter={formatCompactMoney} tickLine={false} axisLine={false} width={72} /><Tooltip content={<ChartTooltip />} /><Legend /><Line type="monotone" dataKey="Portfolio" stroke="#059669" strokeWidth={3} dot={false} />{showPresentValueLine && <Line type="monotone" dataKey="Present Value Portfolio" stroke="#0284c7" strokeWidth={2} dot={false} />}<Line type="monotone" dataKey="Gross Withdrawal" stroke="#d946ef" strokeWidth={2} dot={false} strokeDasharray="5 5" /><Line type="monotone" dataKey="Shortfall" stroke="#dc2626" strokeWidth={2} dot={false} strokeDasharray="3 4" /></LineChart></ResponsiveContainer></div><div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold"><button type="button" onClick={() => setShowPresentValueLine((value) => !value)} className={`rounded-full border px-3 py-2 ${showPresentValueLine ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-200 bg-white text-neutral-500"}`}>Present value</button></div></Card></div><div className="grid gap-5 lg:grid-cols-2"><Card><SectionTitle icon={TrendingUpIcon} title="Market Investment Assumption" subtitle="Use the same index-fund return presets as the other calculators." /><MarketReturnPicker value={marketReturn} onChange={setMarketReturn} /></Card><Card><SectionTitle icon={DollarIcon} title="Retirement Spending and Interest" subtitle="Spending is entered in current dollars, then inflated to retirement." /><div className="space-y-4"><MoneyInput label="Anticipated yearly retirement spending" value={yearlyRetirementSpending} onChange={setYearlyRetirementSpending} max={1000000} step={5000} helperText={`${formatMoney(result.firstYearSpending)} in first retirement year`} /><div><div className="mb-2 text-sm font-medium text-neutral-800">Tax filing status</div><div className="grid gap-2 sm:grid-cols-2">{RETIREMENT_TAX_FILING_STATUSES.map((status) => <button key={status.id} type="button" onClick={() => setTaxFilingStatus(status.id)} className={`rounded-xl border px-3 py-2 text-xs font-bold ${taxFilingStatus === status.id ? "border-neutral-950 bg-neutral-950 text-white" : "border-neutral-200 bg-white text-neutral-700"}`}>{status.label}</button>)}</div></div><PercentInput label="Anticipated retirement rate of return" value={retirementReturn} onChange={setRetirementReturn} min={-10} max={20} /><TaxBracketDisplay bracket={result.retirementTaxBracket} /></div></Card></div></div></CalculatorFrame>;
 }
 
+function getMedicalAnnualCost(age, healthStatus = "healthy") {
+  const status = MEDICAL_HEALTH_STATUS_OPTIONS.some((option) => option.id === healthStatus) ? healthStatus : "healthy";
+  if (age <= MEDICAL_ANNUAL_COSTS_BY_AGE[0].age) return MEDICAL_ANNUAL_COSTS_BY_AGE[0][status];
+  const last = MEDICAL_ANNUAL_COSTS_BY_AGE[MEDICAL_ANNUAL_COSTS_BY_AGE.length - 1];
+  if (age >= last.age) return last[status];
+  for (let index = 1; index < MEDICAL_ANNUAL_COSTS_BY_AGE.length; index++) {
+    const previous = MEDICAL_ANNUAL_COSTS_BY_AGE[index - 1];
+    const next = MEDICAL_ANNUAL_COSTS_BY_AGE[index];
+    if (age <= next.age) {
+      const progress = (age - previous.age) / (next.age - previous.age);
+      return previous[status] + (next[status] - previous[status]) * progress;
+    }
+  }
+  return last[status];
+}
+function getMedicalSexAnnualCost(age, sex = "women") {
+  const costKey = sex === "men" ? "men" : "women";
+  if (age <= MEDICAL_SEX_COSTS_BY_AGE[0].age) return MEDICAL_SEX_COSTS_BY_AGE[0][costKey];
+  const last = MEDICAL_SEX_COSTS_BY_AGE[MEDICAL_SEX_COSTS_BY_AGE.length - 1];
+  if (age >= last.age) return last[costKey];
+  for (let index = 1; index < MEDICAL_SEX_COSTS_BY_AGE.length; index++) {
+    const previous = MEDICAL_SEX_COSTS_BY_AGE[index - 1];
+    const next = MEDICAL_SEX_COSTS_BY_AGE[index];
+    if (age <= next.age) {
+      const progress = (age - previous.age) / (next.age - previous.age);
+      return previous[costKey] + (next[costKey] - previous[costKey]) * progress;
+    }
+  }
+  return last[costKey];
+}
+
+function calculateMedicalCostsScenario({ startingAge, lifeExpectancy, yearlyInvestedAmount, employeeCostPerYear, healthStatus, marketReturn, inflation }) {
+  const years = Math.max(0, lifeExpectancy - startingAge);
+  let investedBalance = 0;
+  let cumulativeInvested = 0;
+  let cumulativeEmployeeCosts = 0;
+  let cumulativeCashCosts = 0;
+  let shortfall = 0;
+  const rows = [];
+  for (let year = 0; year <= years; year++) {
+    const age = startingAge + year;
+    const inflatedYearlyInvestment = yearlyInvestedAmount * safePow(1 + inflation / 100, year);
+    const inflatedEmployeeCost = employeeCostPerYear * safePow(1 + inflation / 100, year);
+    const cashMedicalCost = getMedicalAnnualCost(age, healthStatus) * safePow(1 + inflation / 100, year);
+    investedBalance = investedBalance * (1 + marketReturn / 100) + inflatedYearlyInvestment;
+    cumulativeInvested += inflatedYearlyInvestment;
+    cumulativeEmployeeCosts += inflatedEmployeeCost;
+    cumulativeCashCosts += cashMedicalCost;
+    const endingBalance = investedBalance - cashMedicalCost;
+    if (endingBalance < 0) shortfall += Math.abs(endingBalance);
+    investedBalance = Math.max(0, endingBalance);
+    rows.push({
+      age,
+      year,
+      yearlyInvestedAmount: Math.round(inflatedYearlyInvestment),
+      employeeCost: Math.round(inflatedEmployeeCost),
+      cashMedicalCost: Math.round(cashMedicalCost),
+      investedBalance: Math.round(investedBalance),
+      cumulativeInvested: Math.round(cumulativeInvested),
+      cumulativeEmployeeCosts: Math.round(cumulativeEmployeeCosts),
+      cumulativeCashCosts: Math.round(cumulativeCashCosts),
+      shortfall: Math.round(shortfall),
+    });
+  }
+  const endingBalance = rows[rows.length - 1]?.investedBalance || 0;
+  return { rows, years, endingBalance, cumulativeInvested, cumulativeEmployeeCosts, cumulativeCashCosts, shortfall };
+}
+
+function MedicalCostsCalculator() {
+  const [startingAge, setStartingAge] = useCalculatorState("medical-costs", "startingAge", 35);
+  const [lifeExpectancy, setLifeExpectancy] = useCalculatorState("medical-costs", "lifeExpectancy", 85);
+  const [yearlyInvestedAmount, setYearlyInvestedAmount] = useCalculatorState("medical-costs", "yearlyInvestedAmount", 12000);
+  const [employeeCostPerYear, setEmployeeCostPerYear] = useCalculatorState("medical-costs", "employeeCostPerYear", 6000);
+  const [healthStatus, setHealthStatus] = useCalculatorState("medical-costs", "healthStatus", "healthy");
+  const [marketReturn, setMarketReturn] = useCalculatorState("medical-costs", "marketReturn", 10);
+  const [inflation, setInflation] = useCalculatorState("medical-costs", "inflation", 4);
+  const safeSetStartingAge = (value) => {
+    const age = clampNumber(parseNumber(value), 0, 120);
+    setStartingAge(age);
+    if (lifeExpectancy < age) setLifeExpectancy(age);
+  };
+  const safeSetLifeExpectancy = (value) => setLifeExpectancy(clampNumber(parseNumber(value), startingAge, 120));
+  const result = useMemo(() => calculateMedicalCostsScenario({ startingAge, lifeExpectancy, yearlyInvestedAmount, employeeCostPerYear, healthStatus, marketReturn, inflation }), [startingAge, lifeExpectancy, yearlyInvestedAmount, employeeCostPerYear, healthStatus, marketReturn, inflation]);
+  const chartData = result.rows.map((row) => ({ ...row, "Invested Balance": row.investedBalance, "Cumulative Invested": row.cumulativeInvested, "Cumulative Employee Costs": row.cumulativeEmployeeCosts, "Cumulative Cash Costs": row.cumulativeCashCosts, Shortfall: row.shortfall }));
+  const sexCostChartData = useMemo(() => Array.from({ length: 81 }, (_, index) => {
+    const age = index + 20;
+    return { age, Women: Math.round(getMedicalSexAnnualCost(age, "women")), Men: Math.round(getMedicalSexAnnualCost(age, "men")) };
+  }), []);
+  const selectedHealthStatus = MEDICAL_HEALTH_STATUS_OPTIONS.find((option) => option.id === healthStatus) || MEDICAL_HEALTH_STATUS_OPTIONS[0];
+  const currentAnnualCost = getMedicalAnnualCost(startingAge, healthStatus);
+  const fundedDetail = result.shortfall > 0 ? `${formatCompactMoney(result.shortfall)} uncovered` : "Cash costs covered";
+  return (
+    <CalculatorFrame title="Medical Costs Calculator" badge="Beta" description="Compare investing cash directly with drawing from it for age- and health-status-based medical costs later." exportData={{ columns: MEDICAL_COST_EXPORT_COLUMNS, rows: result.rows }}>
+      <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+          <SmallStat label="Ending balance" value={formatCompactMoney(result.endingBalance)} tone={result.shortfall > 0 ? "amber" : "green"} detail={fundedDetail} />
+          <SmallStat label="Shortfall" value={formatCompactMoney(result.shortfall)} tone="red" />
+          <SmallStat label="Total invested" value={formatCompactMoney(result.cumulativeInvested)} tone="blue" />
+          <SmallStat label="Cash medical costs" value={formatCompactMoney(result.cumulativeCashCosts)} tone="teal" />
+          <SmallStat label="Total employee spending" value={formatCompactMoney(result.cumulativeEmployeeCosts)} tone="amber" />
+          <SmallStat label="Health profile" value={selectedHealthStatus.label} />
+        </div>
+        <div className="grid gap-5 xl:grid-cols-[430px_1fr]">
+          <Card>
+            <SectionTitle icon={MedicalIcon} title="Medical Cost Inputs" subtitle="Set age range, health profile, and yearly amount invested for future cash medical costs." />
+            <div className="space-y-4">
+              <RangeInput label="Starting age" value={startingAge} onChange={safeSetStartingAge} min={0} max={120} suffix="yrs" helperText={`${selectedHealthStatus.label} annual cost at this age: ${formatMoney(currentAnnualCost)}`} />
+              <RangeInput label="Life expectancy" value={lifeExpectancy} onChange={safeSetLifeExpectancy} min={startingAge} max={120} suffix="yrs" helperText={`${result.years} modeled years`} />
+              <div><div className="mb-2 text-sm font-medium text-neutral-800">Health profile</div><div className="grid gap-2 sm:grid-cols-3">{MEDICAL_HEALTH_STATUS_OPTIONS.map((option) => <button key={option.id} type="button" onClick={() => setHealthStatus(option.id)} className={`rounded-xl border px-3 py-2 text-xs font-bold ${healthStatus === option.id ? "border-neutral-950 bg-neutral-950 text-white" : "border-neutral-200 bg-white text-neutral-700"}`}>{option.label}</button>)}</div></div>
+              <MoneyInput label="Yearly invested amount" value={yearlyInvestedAmount} onChange={setYearlyInvestedAmount} max={100000} step={500} helperText="Invested each year, then cash medical costs are withdrawn." />
+              <MoneyInput label="Employee costs per year" value={employeeCostPerYear} onChange={setEmployeeCostPerYear} max={100000} step={500} helperText="Shown as a cumulative comparison line on the graph." />
+            </div>
+          </Card>
+          <Card className="min-h-[520px]">
+            <SectionTitle icon={BarChartIcon} title="Invested vs. cash medical costs" subtitle={`${formatMoney(result.endingBalance)} invested balance at age ${lifeExpectancy}.`} />
+            <div className="h-[420px]"><ResponsiveContainer width="100%" height="100%"><LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="age" tickLine={false} axisLine={false} /><YAxis tickFormatter={formatCompactMoney} tickLine={false} axisLine={false} width={72} /><Tooltip content={<ChartTooltip />} /><Legend /><Line type="monotone" dataKey="Invested Balance" stroke="#059669" strokeWidth={3} dot={false} /><Line type="monotone" dataKey="Cumulative Invested" stroke="#0284c7" strokeWidth={2} dot={false} /><Line type="monotone" dataKey="Cumulative Employee Costs" stroke="#f59e0b" strokeWidth={2} dot={false} /><Line type="monotone" dataKey="Cumulative Cash Costs" stroke="#d946ef" strokeWidth={2} dot={false} /><Line type="monotone" dataKey="Shortfall" stroke="#dc2626" strokeWidth={2} dot={false} strokeDasharray="3 4" /></LineChart></ResponsiveContainer></div>
+          </Card>
+        </div>
+        <div className="grid gap-5 lg:grid-cols-2">
+          <Card><SectionTitle icon={TrendingUpIcon} title="Investment assumptions" subtitle="Use the same index-fund return presets as the other calculators." /><div className="space-y-4"><MarketReturnPicker value={marketReturn} onChange={setMarketReturn} /><PercentInput label="Medical cost inflation" value={inflation} onChange={setInflation} min={0} max={15} helperText="Inflates both the yearly invested amount and selected health-profile medical costs." /></div></Card>
+          <Card><SectionTitle icon={CalculatorIcon} title="Annual medical cost table" subtitle="Baseline annual costs from the provided health-profile table. Ages between rows are interpolated." /><div className="max-h-[420px] overflow-y-auto rounded-2xl border border-neutral-200"><table className="w-full min-w-[520px] table-fixed border-separate border-spacing-0 text-left text-xs"><thead className="sticky top-0 bg-neutral-50 text-neutral-500"><tr><th className="border-b border-neutral-200 px-3 py-2">Age</th><th className="border-b border-neutral-200 px-3 py-2 text-right">Healthy</th><th className="border-b border-neutral-200 px-3 py-2 text-right">Unhealthy</th><th className="border-b border-neutral-200 px-3 py-2 text-right">Very unhealthy</th></tr></thead><tbody>{MEDICAL_ANNUAL_COSTS_BY_AGE.map((row) => <tr key={row.age}><td className="border-b border-neutral-100 px-3 py-2 font-semibold">{row.age}</td><td className="border-b border-neutral-100 px-3 py-2 text-right">{formatMoney(row.healthy)}</td><td className="border-b border-neutral-100 px-3 py-2 text-right">{formatMoney(row.unhealthy)}</td><td className="border-b border-neutral-100 px-3 py-2 text-right">{formatMoney(row["very-unhealthy"])}</td></tr>)}</tbody></table></div><p className="mt-3 text-xs leading-5 text-neutral-500">Figures are annual estimates in 2024 dollars from the supplied Medicaid cost table.</p></Card>
+        </div>
+        <Card>
+          <SectionTitle icon={BarChartIcon} title="Women compared to Men annual Medicaid cost" subtitle="Estimated annual Medicaid costs by age from the supplied men-vs-women table." />
+          <div className="h-[380px]"><ResponsiveContainer width="100%" height="100%"><LineChart data={sexCostChartData} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}><CartesianGrid strokeDasharray="3 3" /><ReferenceArea x1={20} x2={45} fill="#d4d4d4" fillOpacity={0.22} label={{ value: "Reproductive years", position: "insideTop", fill: "#737373", fontSize: 11 }} /><ReferenceArea x1={83} x2={100} fill="#d4d4d4" fillOpacity={0.22} label={{ value: "Nursing home years", position: "insideTop", fill: "#737373", fontSize: 11 }} /><XAxis dataKey="age" tickLine={false} axisLine={false} /><YAxis tickFormatter={formatCompactMoney} tickLine={false} axisLine={false} width={72} /><Tooltip content={<ChartTooltip />} /><Legend /><Line type="monotone" dataKey="Women" stroke="#D85A30" strokeWidth={3} dot={false} /><Line type="monotone" dataKey="Men" stroke="#378ADD" strokeWidth={3} dot={false} strokeDasharray="6 3" /></LineChart></ResponsiveContainer></div>
+          <div className="mt-4 space-y-3 text-xs leading-5 text-neutral-600">
+            <p><span className="font-semibold text-neutral-800">Why women cost more at 20-45:</span> Medicaid is the single largest payer of maternity care in the U.S., covering nearly half of all births. Prenatal visits, labor and delivery, postpartum care, and family planning services all accumulate significantly across those years.</p>
+            <p><span className="font-semibold text-neutral-800">The middle-age convergence, roughly 45-73:</span> Men's costs climb sharply as cardiovascular disease, COPD, and alcohol/substance-related conditions hit earlier and harder. Women's reproductive costs fade. The two lines run close together, with men briefly spending more per year around the 55-65 window in this model.</p>
+            <p><span className="font-semibold text-neutral-800">Why women pull far ahead after 75:</span> Two compounding factors: women live about 5-6 years longer on average, and they are significantly more likely to spend time in nursing facilities, which Medicaid covers and Medicare does not. Women over 85 make up the majority of nursing home residents, and those stays can run $80,000-$120,000/year. Men who survive to very old age tend to have spousal caregivers at home longer, reducing formal Medicaid-paid care.</p>
+            <p><span className="font-semibold text-neutral-800">The selection effect at very old ages:</span> Men who reach 90+ on Medicaid are a particularly survivor-selected group, which moderates their cost curve somewhat relative to women of the same age.</p>
+            <p className="italic text-neutral-500">Estimates reflect average Medicaid expenditures per enrolled beneficiary including acute care, behavioral health, pharmacy, and long-term services and supports. Women's costs at 20-45 are elevated by pregnancy, maternity, and reproductive health services. Men's costs rise sharply in middle age due to earlier onset of cardiovascular disease and higher rates of substance use treatment. At 65+, women's costs significantly exceed men's due to greater long-term care utilization and longer average survival in nursing facilities. Sources: CMS MBES/CBES, KFF Medicaid analyses, MACPAC reports. Figures in 2024 dollars.</p>
+          </div>
+        </Card>
+      </div>
+    </CalculatorFrame>
+  );
+}
+
 function LandingPage({ onSelectCalculator }) {
   const renderCard = (calculator) => {
     const Icon = calculator.icon;
@@ -1003,8 +1208,9 @@ function LandingPage({ onSelectCalculator }) {
       <a
         key={calculator.id}
         href={calculatorRouteMap[calculator.id]}
-        className="group flex min-h-[330px] w-full max-w-[380px] flex-col rounded-3xl border border-neutral-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-neutral-400 hover:shadow-md md:w-[calc(50%-10px)] min-[1440px]:w-[calc(25%-15px)]"
+        className="group relative flex min-h-[330px] w-full max-w-[380px] flex-col overflow-hidden rounded-3xl border border-neutral-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-neutral-400 hover:shadow-md md:w-[calc(50%-10px)] min-[1440px]:w-[calc(25%-15px)]"
       >
+        {calculator.beta && <div className="absolute left-[-38px] top-5 z-10 w-36 -rotate-45 bg-fuchsia-600 py-1 text-center text-[11px] font-black uppercase tracking-widest text-white shadow-sm">Beta</div>}
         <div className="mb-5 flex h-12 items-start">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-neutral-100 leading-none transition group-hover:bg-neutral-950 group-hover:text-white">
             <Icon className="block h-5 w-5" />
@@ -1039,6 +1245,7 @@ const calculators = [
   { id: "college-savings", name: "College Savings Calculator", subtitle: "Am I saving enough for college?", shortName: "College", description: "Project college savings for one or more children with monthly contributions, index return assumptions, education inflation, and July tuition plus board withdrawals.", icon: GraduationIcon, component: CollegeSavingsCalculator },
   { id: "generational-savings", name: "Generational Savings", subtitle: "How much should I save for my kids' future?", shortName: "Generational", description: "Plan for a larger family savings path that can cover college, cars, home down payments, and postgraduate degrees for your children.", icon: GiftIcon, component: GenerationalSavingsCalculator },
   { id: "retirement", name: "Retirement Calculator", subtitle: "Am I on track to retire?", shortName: "Retirement", description: "Project retirement savings, inflation-adjusted spending, withdrawal needs, retirement returns, and an auto-filled 2025 federal tax bracket.", icon: CalculatorIcon, component: RetirementCalculator },
+  { id: "medical-costs", name: "Medical Costs Calculator", subtitle: "Self fund care through investment or pay into insurance?", shortName: "Medical", description: "Compare a yearly invested amount with age-based medical cash costs later in life.", icon: MedicalIcon, component: MedicalCostsCalculator, beta: true },
 
 ];
 
@@ -1046,6 +1253,7 @@ const calculatorRouteMap = {
   "rent-vs-buy": "/rent-vs-buy",
   "rental-property-2": "/rental-property-eval",
   "auto-cost": "/auto-cost",
+  "medical-costs": "/medical-costs",
   "retirement": "/retirement",
   "home-value": "/home-value-vs-market",
   "college-savings": "/college-savings",
@@ -1106,6 +1314,17 @@ const pageCopy = {
     sections: [
       { title: "How to interpret the result", body: "The winning option has the best estimated outcome after subtracting net vehicle cost and adding the value of any saved cash invested over the comparison period." },
       { title: "What to verify", body: "Confirm real loan or lease quotes, insurance premiums, maintenance expectations, taxes, registration, mileage limits, residual values, and resale assumptions for the specific vehicle." },
+    ],
+  },
+  "medical-costs": {
+    title: "About this medical costs calculator",
+    body: [
+      "This medical costs calculator models a simplified self-funding path. It invests a yearly amount, then subtracts age- and health-status-based cash healthcare costs from the provided annual Medicaid cost table.",
+      "The model uses the selected health profile as the baseline, interpolates between the provided ages, applies medical cost inflation each year, and compounds the remaining balance at the selected market return.",
+    ],
+    sections: [
+      { title: "How to interpret the result", body: "A remaining invested balance means the modeled self-funded account covered the cash medical costs with money left over. A shortfall means projected medical costs exceeded the invested balance." },
+      { title: "What to verify", body: "Real health insurance provides risk pooling, negotiated rates, out-of-pocket maximums, emergency coverage, and legal requirements that this simplified model does not capture. Verify premiums, subsidies, deductibles, provider cash prices, and catastrophic-risk exposure." },
     ],
   },
   retirement: {
