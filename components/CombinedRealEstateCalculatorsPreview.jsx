@@ -5745,6 +5745,8 @@ function AdvancedGenerationalTrackingPanel({
   brokerageOnlyResult,
   startingAmount,
   monthlyContribution,
+  marketReturn,
+  setMarketReturn,
   startingAmount529Pct,
   monthlyContribution529Pct,
   plan529Return,
@@ -5761,12 +5763,20 @@ function AdvancedGenerationalTrackingPanel({
   setRetirementSalary,
   optimizeAdvancedContributions,
   isOptimizingAdvancedContributions,
+  advancedMonthlyContributionNeeded,
+  advancedStartingAmount529Pct,
+  advancedMonthlyContribution529Pct,
+  optimizeBrokerageOnlyContribution,
+  isOptimizingBrokerageOnlyContribution,
+  brokerageOnlyMonthlyContributionNeeded,
+  areContributionResultsCalculating,
+  selectedOptimization,
 }) {
   const [comparisonSeriesVisibility, setComparisonSeriesVisibility] = useState({
     balance529Brokerage: true,
     balanceBrokerageOnly: true,
-    tax529Brokerage: true,
-    taxBrokerageOnly: true,
+    tax529Brokerage: false,
+    taxBrokerageOnly: false,
   });
   const toggleComparisonSeries = (key) =>
     setComparisonSeriesVisibility((current) => ({
@@ -5820,14 +5830,75 @@ function AdvancedGenerationalTrackingPanel({
       color: "#64748b",
     },
   ];
+  const isAdvancedOptimizationSelected = selectedOptimization === "advanced";
+  const isBrokerageOnlyOptimizationSelected =
+    selectedOptimization === "brokerage-only";
+  const hasContributionResults =
+    Number.isFinite(advancedMonthlyContributionNeeded) &&
+    Number.isFinite(brokerageOnlyMonthlyContributionNeeded);
+  const advancedResultIsLower =
+    hasContributionResults &&
+    advancedMonthlyContributionNeeded < brokerageOnlyMonthlyContributionNeeded;
+  const brokerageOnlyResultIsLower =
+    hasContributionResults &&
+    brokerageOnlyMonthlyContributionNeeded < advancedMonthlyContributionNeeded;
+  const formatContributionResult = (value) =>
+    areContributionResultsCalculating || !Number.isFinite(value)
+      ? "Calculating..."
+      : formatMoney(value);
+  const resultCardClass = (isLower) =>
+    `rounded-xl border p-4 ${
+      isLower
+        ? "border-emerald-200 bg-emerald-50"
+        : "border-neutral-200 bg-neutral-50"
+    }`;
+  const advancedStarting529Amount = Number.isFinite(
+    advancedStartingAmount529Pct,
+  )
+    ? startingAmount * (advancedStartingAmount529Pct / 100)
+    : NaN;
+  const advancedMonthly529Amount =
+    Number.isFinite(advancedMonthlyContributionNeeded) &&
+    Number.isFinite(advancedMonthlyContribution529Pct)
+      ? advancedMonthlyContributionNeeded *
+        (advancedMonthlyContribution529Pct / 100)
+      : NaN;
+  const resultDetailRows = [
+    {
+      label: "Starting amount in brokerage",
+      advancedValue: Number.isFinite(advancedStarting529Amount)
+        ? startingAmount - advancedStarting529Amount
+        : NaN,
+      brokerageOnlyValue: startingAmount,
+    },
+    {
+      label: "Starting amount in 529",
+      advancedValue: advancedStarting529Amount,
+      brokerageOnlyValue: 0,
+    },
+    {
+      label: "Monthly contribution for 529",
+      advancedValue: advancedMonthly529Amount,
+      brokerageOnlyValue: 0,
+    },
+    {
+      label: "Monthly contribution for brokerage",
+      advancedValue:
+        Number.isFinite(advancedMonthlyContributionNeeded) &&
+        Number.isFinite(advancedMonthly529Amount)
+          ? advancedMonthlyContributionNeeded - advancedMonthly529Amount
+          : NaN,
+      brokerageOnlyValue: brokerageOnlyMonthlyContributionNeeded,
+    },
+  ];
   return (
     <div className="mt-5 space-y-5">
-      <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
+      <div className="grid gap-5 lg:grid-cols-2">
         <div>
           <h3 className="mb-3 text-sm font-bold tracking-tight text-neutral-950">
             529 and Brokerage information
           </h3>
-          <div className="space-y-4">
+          <div className="space-y-4 lg:min-h-[360px]">
             <PercentInput
               label="% of starting amount in 529"
               value={startingAmount529Pct}
@@ -5858,90 +5929,35 @@ function AdvancedGenerationalTrackingPanel({
               max={20}
               helperText="Used only for 529 account growth."
             />
-            <div>
-              <button
-                type="button"
-                onClick={optimizeAdvancedContributions}
-                disabled={isOptimizingAdvancedContributions}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-neutral-950 bg-neutral-950 px-4 text-sm font-bold text-white transition hover:bg-neutral-800 disabled:cursor-wait disabled:opacity-75"
-              >
-                {isOptimizingAdvancedContributions && (
-                  <span
-                    aria-hidden="true"
-                    className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white"
-                  />
-                )}
-                {isOptimizingAdvancedContributions
-                  ? "Thinking..."
-                  : "Optimize 529 and brokerage"}
-              </button>
-              <p className="mt-1 text-xs leading-5 text-neutral-500">
-                Will attempt to optimize investments to end both accounts at $0.
-              </p>
-            </div>
           </div>
         </div>
-        <div className="h-[420px] rounded-xl border border-neutral-200 bg-white p-3">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={result.rows}
-              margin={{ top: 10, right: 20, left: 0, bottom: 16 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="year"
-                type="number"
-                domain={[0, Math.ceil(result.horizonYears)]}
-                allowDecimals={false}
-                tick={CHART_AXIS_TICK}
-                tickLine={false}
-                axisLine={false}
-                height={56}
-                label={{
-                  ...CHART_AXIS_LABEL,
-                  value: "Years from today",
-                  position: "insideBottom",
-                  offset: 10,
-                }}
-              />
-              <YAxis
-                tick={CHART_AXIS_TICK}
-                tickFormatter={formatCompactMoney}
-                tickLine={false}
-                axisLine={false}
-                width={72}
-              />
-              <Tooltip content={<ChartTooltip />} />
-              <Legend
-                verticalAlign="bottom"
-                wrapperStyle={CHART_BOTTOM_LEGEND_WRAPPER_STYLE}
-              />
-              <Line
-                type="monotone"
-                dataKey="combined529Balance"
-                name="529 Balance"
-                stroke="#7c3aed"
-                strokeWidth={3}
-                dot={false}
-              />
-              <Line
-                type="monotone"
-                dataKey="combinedBrokerageBalance"
-                name="Brokerage Balance"
-                stroke="#d97706"
-                strokeWidth={3}
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+        <div className="lg:border-l lg:border-neutral-200 lg:pl-5 lg:pb-5">
+          <h3 className="mb-3 text-sm font-bold tracking-tight text-neutral-950">
+            Brokerage only option
+          </h3>
+          <div className="space-y-4 lg:min-h-[360px]">
+            <p className="text-sm leading-6 text-neutral-600">
+              Uses the same milestone and brokerage tax settings, with the
+              investment assumptions below.
+            </p>
+            <MarketReturnPicker
+              value={marketReturn}
+              onChange={setMarketReturn}
+            />
+          </div>
         </div>
       </div>
       <div className="border-t border-neutral-200 pt-5">
-        <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
-          <div>
-            <h3 className="mb-3 text-sm font-bold tracking-tight text-neutral-950">
-              Capital gains tax information for brokerage withdrawal
-            </h3>
+        <p className="mb-3 text-sm leading-6 text-neutral-600">
+          <strong className="font-bold text-neutral-700">Step 2:</strong> Enter
+          your Salary and retirement information below so we can determine a
+          proper capital gains tax for brokerage withdrawals
+        </p>
+        <div>
+          <h3 className="mb-3 text-sm font-bold tracking-tight text-neutral-950">
+            Capital gains tax information for brokerage withdrawal
+          </h3>
+          <div className="grid gap-5 md:grid-cols-2">
             <div className="space-y-4">
               <RangeInput
                 label="Current age"
@@ -5959,6 +5975,8 @@ function AdvancedGenerationalTrackingPanel({
                 step={5000}
                 helperText={`${formatPercent(currentCapitalGainsBracket.rate)} long-term capital gains before retirement`}
               />
+            </div>
+            <div className="space-y-4">
               <RangeInput
                 label="Retirement age"
                 value={retirementAge}
@@ -5977,90 +5995,132 @@ function AdvancedGenerationalTrackingPanel({
               />
             </div>
           </div>
-          <div className="h-[420px] rounded-xl border border-neutral-200 bg-white p-3">
-            {brokerageTaxChartData.length ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={brokerageTaxChartData}
-                  margin={{ top: 10, right: 20, left: 0, bottom: 16 }}
+        </div>
+      </div>
+      <p className="text-sm leading-6 text-neutral-600">
+        <strong className="font-bold text-neutral-700">Step 3:</strong> Look at
+        the Monthly contributions above and select to optimize for the lower
+        one.
+      </p>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <div className="flex flex-col gap-4">
+          <div className={resultCardClass(advancedResultIsLower)}>
+            <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+              Monthly contribution per child needed for 529+Brokerage
+            </div>
+            <div className="mt-2 text-2xl font-bold text-neutral-950">
+              {formatContributionResult(advancedMonthlyContributionNeeded)}
+            </div>
+            <div className="mt-4 space-y-2">
+              {resultDetailRows.map((row) => (
+                <div
+                  key={`advanced-${row.label}`}
+                  className="flex items-center justify-between gap-4 text-sm"
                 >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="year"
-                    tick={CHART_AXIS_TICK}
-                    tickLine={false}
-                    axisLine={false}
-                    height={56}
-                    label={{
-                      ...CHART_AXIS_LABEL,
-                      value: "Years from today",
-                      position: "insideBottom",
-                      offset: 10,
-                    }}
-                  />
-                  <YAxis
-                    tick={CHART_AXIS_TICK}
-                    tickFormatter={formatCompactMoney}
-                    tickLine={false}
-                    axisLine={false}
-                    width={72}
-                  />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Legend
-                    verticalAlign="bottom"
-                    wrapperStyle={CHART_BOTTOM_LEGEND_WRAPPER_STYLE}
-                  />
-                  <Bar
-                    dataKey="Brokerage to milestone"
-                    stackId="brokerage"
-                    fill="#0284c7"
-                  />
-                  <Bar
-                    dataKey="Brokerage tax"
-                    stackId="brokerage"
-                    fill="#7dd3fc"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full items-center justify-center text-center text-sm font-semibold text-neutral-500">
-                No brokerage withdrawals in the current plan.
-              </div>
-            )}
+                  <span className="text-neutral-600">{row.label}</span>
+                  <strong className="text-neutral-950">
+                    {formatContributionResult(row.advancedValue)}
+                  </strong>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mt-auto">
+            <button
+              type="button"
+              aria-pressed={isAdvancedOptimizationSelected}
+              onClick={optimizeAdvancedContributions}
+              disabled={
+                isOptimizingAdvancedContributions ||
+                isOptimizingBrokerageOnlyContribution
+              }
+              className={`flex h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold transition disabled:cursor-wait disabled:opacity-75 ${
+                isAdvancedOptimizationSelected
+                  ? "border-neutral-950 bg-neutral-950 text-white hover:bg-neutral-800"
+                  : "border-neutral-300 bg-white text-neutral-950 hover:border-neutral-950"
+              }`}
+            >
+              {isOptimizingAdvancedContributions && (
+                <span
+                  aria-hidden="true"
+                  className={`h-4 w-4 animate-spin rounded-full border-2 ${
+                    isAdvancedOptimizationSelected
+                      ? "border-white/35 border-t-white"
+                      : "border-neutral-300 border-t-neutral-950"
+                  }`}
+                />
+              )}
+              {isOptimizingAdvancedContributions
+                ? "Thinking..."
+                : "Optimize 529 and brokerage"}
+            </button>
+            <p className="mt-1 text-xs leading-5 text-neutral-500">
+              Will attempt to optimize investments to end both accounts at $0.
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-col gap-4 lg:border-l lg:border-neutral-200 lg:pl-5">
+          <div className={resultCardClass(brokerageOnlyResultIsLower)}>
+            <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+              Monthly contribution per child needed for Brokerage Only
+            </div>
+            <div className="mt-2 text-2xl font-bold text-neutral-950">
+              {formatContributionResult(brokerageOnlyMonthlyContributionNeeded)}
+            </div>
+            <div className="mt-4 space-y-2">
+              {resultDetailRows.map((row) => (
+                <div
+                  key={`brokerage-${row.label}`}
+                  className="flex items-center justify-between gap-4 text-sm"
+                >
+                  <span className="text-neutral-600">{row.label}</span>
+                  <strong className="text-neutral-950">
+                    {formatContributionResult(row.brokerageOnlyValue)}
+                  </strong>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mt-auto">
+            <button
+              type="button"
+              aria-pressed={isBrokerageOnlyOptimizationSelected}
+              onClick={optimizeBrokerageOnlyContribution}
+              disabled={
+                isOptimizingBrokerageOnlyContribution ||
+                isOptimizingAdvancedContributions
+              }
+              className={`flex h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold transition disabled:cursor-wait disabled:opacity-75 ${
+                isBrokerageOnlyOptimizationSelected
+                  ? "border-neutral-950 bg-neutral-950 text-white hover:bg-neutral-800"
+                  : "border-neutral-300 bg-white text-neutral-950 hover:border-neutral-950"
+              }`}
+            >
+              {isOptimizingBrokerageOnlyContribution && (
+                <span
+                  aria-hidden="true"
+                  className={`h-4 w-4 animate-spin rounded-full border-2 ${
+                    isBrokerageOnlyOptimizationSelected
+                      ? "border-white/35 border-t-white"
+                      : "border-neutral-300 border-t-neutral-950"
+                  }`}
+                />
+              )}
+              {isOptimizingBrokerageOnlyContribution
+                ? "Thinking..."
+                : "Optimize brokerage only"}
+            </button>
+            <p className="mt-1 text-xs leading-5 text-neutral-500">
+              Will attempt to optimize brokerage-only monthly contributions to
+              end at $0.
+            </p>
           </div>
         </div>
       </div>
       <div>
-        <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <h3 className="text-sm font-bold tracking-tight text-neutral-950">
-            529 + Brokerage vs. Only Brokerage
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {comparisonSeriesControls.map((control) => {
-              const isVisible = comparisonSeriesVisibility[control.key];
-              return (
-                <button
-                  key={control.key}
-                  type="button"
-                  onClick={() => toggleComparisonSeries(control.key)}
-                  aria-pressed={isVisible}
-                  className={`inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-bold transition ${
-                    isVisible
-                      ? "border-neutral-950 bg-neutral-950 text-white"
-                      : "border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300"
-                  }`}
-                >
-                  <span
-                    aria-hidden="true"
-                    className="h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: control.color }}
-                  />
-                  {control.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <h3 className="mb-3 text-sm font-bold tracking-tight text-neutral-950">
+          529 + Brokerage vs. Only Brokerage
+        </h3>
         <div className="h-[420px] rounded-xl border border-neutral-200 bg-white p-3">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart
@@ -6144,6 +6204,146 @@ function AdvancedGenerationalTrackingPanel({
                 />
               )}
             </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {comparisonSeriesControls.map((control) => {
+            const isVisible = comparisonSeriesVisibility[control.key];
+            return (
+              <button
+                key={control.key}
+                type="button"
+                onClick={() => toggleComparisonSeries(control.key)}
+                aria-pressed={isVisible}
+                className={`inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-bold transition ${
+                  isVisible
+                    ? "border-neutral-300 bg-neutral-100 text-neutral-950"
+                    : "border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300"
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: control.color }}
+                />
+                {control.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div>
+        <h3 className="mb-3 text-sm font-bold tracking-tight text-neutral-950">
+          Tax graph for milestone withddrawal
+        </h3>
+        <div className="h-[420px] rounded-xl border border-neutral-200 bg-white p-3">
+          {brokerageTaxChartData.length ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={brokerageTaxChartData}
+                margin={{ top: 10, right: 20, left: 0, bottom: 16 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="year"
+                  tick={CHART_AXIS_TICK}
+                  tickLine={false}
+                  axisLine={false}
+                  height={56}
+                  label={{
+                    ...CHART_AXIS_LABEL,
+                    value: "Years from today",
+                    position: "insideBottom",
+                    offset: 10,
+                  }}
+                />
+                <YAxis
+                  tick={CHART_AXIS_TICK}
+                  tickFormatter={formatCompactMoney}
+                  tickLine={false}
+                  axisLine={false}
+                  width={72}
+                />
+                <Tooltip content={<ChartTooltip />} />
+                <Legend
+                  verticalAlign="bottom"
+                  wrapperStyle={CHART_BOTTOM_LEGEND_WRAPPER_STYLE}
+                />
+                <Bar
+                  dataKey="Brokerage to milestone"
+                  stackId="brokerage"
+                  fill="#0284c7"
+                />
+                <Bar
+                  dataKey="Brokerage tax"
+                  stackId="brokerage"
+                  fill="#7dd3fc"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-full items-center justify-center text-center text-sm font-semibold text-neutral-500">
+              No brokerage withdrawals in the current plan.
+            </div>
+          )}
+        </div>
+      </div>
+      <div>
+        <h3 className="mb-3 text-sm font-bold tracking-tight text-neutral-950">
+          529 and brokerage balances
+        </h3>
+        <div className="h-[420px] rounded-xl border border-neutral-200 bg-white p-3">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={result.rows}
+              margin={{ top: 10, right: 20, left: 0, bottom: 16 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="year"
+                type="number"
+                domain={[0, Math.ceil(result.horizonYears)]}
+                allowDecimals={false}
+                tick={CHART_AXIS_TICK}
+                tickLine={false}
+                axisLine={false}
+                height={56}
+                label={{
+                  ...CHART_AXIS_LABEL,
+                  value: "Years from today",
+                  position: "insideBottom",
+                  offset: 10,
+                }}
+              />
+              <YAxis
+                tick={CHART_AXIS_TICK}
+                tickFormatter={formatCompactMoney}
+                tickLine={false}
+                axisLine={false}
+                width={72}
+              />
+              <Tooltip content={<ChartTooltip />} />
+              <Legend
+                verticalAlign="bottom"
+                wrapperStyle={CHART_BOTTOM_LEGEND_WRAPPER_STYLE}
+              />
+              <Line
+                type="monotone"
+                dataKey="combined529Balance"
+                name="529 Balance"
+                stroke="#7c3aed"
+                strokeWidth={3}
+                dot={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="combinedBrokerageBalance"
+                name="Brokerage Balance"
+                stroke="#d97706"
+                strokeWidth={3}
+                dot={false}
+              />
+            </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
@@ -6269,6 +6469,21 @@ function GenerationalSavingsCalculator() {
     isOptimizingAdvancedContributions,
     setIsOptimizingAdvancedContributions,
   ] = useState(false);
+  const [
+    isOptimizingBrokerageOnlyContribution,
+    setIsOptimizingBrokerageOnlyContribution,
+  ] = useState(false);
+  const [selectedOptimization, setSelectedOptimization] = useState(null);
+  const [optimizedAdvancedContribution, setOptimizedAdvancedContribution] =
+    useState(null);
+  const [
+    brokerageOnlyMonthlyContributionNeeded,
+    setBrokerageOnlyMonthlyContributionNeeded,
+  ] = useState(null);
+  const [
+    areContributionResultsCalculating,
+    setAreContributionResultsCalculating,
+  ] = useState(false);
   const setSafeChildCount = (nextCount) => {
     const count = clampNumber(parseNumber(nextCount), 1, 6);
     setChildCount(count);
@@ -6314,39 +6529,184 @@ function GenerationalSavingsCalculator() {
         retirementSalary: advancedRetirementSalary,
       }),
     );
+  useEffect(() => {
+    if (!showAdvancedInvestment) return undefined;
+    let isCancelled = false;
+    setAreContributionResultsCalculating(true);
+    const timeout = window.setTimeout(() => {
+      const nextOptimizedAdvancedContribution =
+        findGenerationalOptimizedAdvancedContributions({
+          children,
+          startingAmount,
+          marketReturn,
+          inflation,
+          carCost,
+          annualTuition,
+          annualBoard,
+          annualPostgradTuition,
+          annualPostgradBoard,
+          postgradYears,
+          downPayment,
+          downPaymentAge,
+          startingAmount529Pct,
+          plan529Return,
+          currentAge: advancedCurrentAge,
+          currentSalary: advancedCurrentSalary,
+          retirementAge: advancedRetirementAge,
+          retirementSalary: advancedRetirementSalary,
+        });
+      const nextBrokerageOnlyMonthlyContribution =
+        findGenerationalZeroBalanceContribution({
+          children,
+          startingAmount,
+          marketReturn,
+          inflation,
+          carCost,
+          annualTuition,
+          annualBoard,
+          annualPostgradTuition,
+          annualPostgradBoard,
+          postgradYears,
+          downPayment,
+          downPaymentAge,
+          advancedTracking: true,
+          startingAmount529Pct: 0,
+          monthlyContribution529Pct: 0,
+          plan529Return: marketReturn,
+          currentAge: advancedCurrentAge,
+          currentSalary: advancedCurrentSalary,
+          retirementAge: advancedRetirementAge,
+          retirementSalary: advancedRetirementSalary,
+        });
+      if (isCancelled) return;
+      setOptimizedAdvancedContribution(nextOptimizedAdvancedContribution);
+      setBrokerageOnlyMonthlyContributionNeeded(
+        nextBrokerageOnlyMonthlyContribution,
+      );
+      setAreContributionResultsCalculating(false);
+    }, 150);
+    return () => {
+      isCancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [
+    showAdvancedInvestment,
+    children,
+    startingAmount,
+    marketReturn,
+    inflation,
+    carCost,
+    annualTuition,
+    annualBoard,
+    annualPostgradTuition,
+    annualPostgradBoard,
+    postgradYears,
+    downPayment,
+    downPaymentAge,
+    startingAmount529Pct,
+    plan529Return,
+    advancedCurrentAge,
+    advancedCurrentSalary,
+    advancedRetirementAge,
+    advancedRetirementSalary,
+  ]);
+  const calculateOptimizedAdvancedContribution = () =>
+    optimizedAdvancedContribution ??
+    findGenerationalOptimizedAdvancedContributions({
+      children,
+      startingAmount,
+      marketReturn,
+      inflation,
+      carCost,
+      annualTuition,
+      annualBoard,
+      annualPostgradTuition,
+      annualPostgradBoard,
+      postgradYears,
+      downPayment,
+      downPaymentAge,
+      startingAmount529Pct,
+      plan529Return,
+      currentAge: advancedCurrentAge,
+      currentSalary: advancedCurrentSalary,
+      retirementAge: advancedRetirementAge,
+      retirementSalary: advancedRetirementSalary,
+    });
+  const calculateBrokerageOnlyMonthlyContribution = () =>
+    Number.isFinite(brokerageOnlyMonthlyContributionNeeded)
+      ? brokerageOnlyMonthlyContributionNeeded
+      : findGenerationalZeroBalanceContribution({
+          children,
+          startingAmount,
+          marketReturn,
+          inflation,
+          carCost,
+          annualTuition,
+          annualBoard,
+          annualPostgradTuition,
+          annualPostgradBoard,
+          postgradYears,
+          downPayment,
+          downPaymentAge,
+          advancedTracking: true,
+          startingAmount529Pct: 0,
+          monthlyContribution529Pct: 0,
+          plan529Return: marketReturn,
+          currentAge: advancedCurrentAge,
+          currentSalary: advancedCurrentSalary,
+          retirementAge: advancedRetirementAge,
+          retirementSalary: advancedRetirementSalary,
+        });
   const optimizeAdvancedContributions = () => {
-    if (isOptimizingAdvancedContributions) return;
+    if (
+      isOptimizingAdvancedContributions ||
+      isOptimizingBrokerageOnlyContribution
+    )
+      return;
+    setSelectedOptimization("advanced");
     setIsOptimizingAdvancedContributions(true);
     window.requestAnimationFrame(() => {
       window.setTimeout(() => {
         try {
-          const optimized = findGenerationalOptimizedAdvancedContributions({
-            children,
-            startingAmount,
-            marketReturn,
-            inflation,
-            carCost,
-            annualTuition,
-            annualBoard,
-            annualPostgradTuition,
-            annualPostgradBoard,
-            postgradYears,
-            downPayment,
-            downPaymentAge,
-            startingAmount529Pct,
-            plan529Return,
-            currentAge: advancedCurrentAge,
-            currentSalary: advancedCurrentSalary,
-            retirementAge: advancedRetirementAge,
-            retirementSalary: advancedRetirementSalary,
-          });
-          setStartingAmount529Pct(Math.round(optimized.startingAmount529Pct));
-          setMonthlyContribution529Pct(
-            Math.round(optimized.monthlyContribution529Pct),
+          const nextOptimizedAdvancedContribution =
+            calculateOptimizedAdvancedContribution();
+          setOptimizedAdvancedContribution(nextOptimizedAdvancedContribution);
+          setStartingAmount529Pct(
+            Math.round(nextOptimizedAdvancedContribution.startingAmount529Pct),
           );
-          setMonthlyContribution(optimized.monthlyContribution);
+          setMonthlyContribution529Pct(
+            Math.round(
+              nextOptimizedAdvancedContribution.monthlyContribution529Pct,
+            ),
+          );
+          setMonthlyContribution(
+            nextOptimizedAdvancedContribution.monthlyContribution,
+          );
         } finally {
           setIsOptimizingAdvancedContributions(false);
+        }
+      }, 0);
+    });
+  };
+  const optimizeBrokerageOnlyContribution = () => {
+    if (
+      isOptimizingBrokerageOnlyContribution ||
+      isOptimizingAdvancedContributions
+    )
+      return;
+    setSelectedOptimization("brokerage-only");
+    setIsOptimizingBrokerageOnlyContribution(true);
+    window.requestAnimationFrame(() => {
+      window.setTimeout(() => {
+        try {
+          const nextBrokerageOnlyMonthlyContribution =
+            calculateBrokerageOnlyMonthlyContribution();
+          setBrokerageOnlyMonthlyContributionNeeded(
+            nextBrokerageOnlyMonthlyContribution,
+          );
+          setMonthlyContribution(nextBrokerageOnlyMonthlyContribution);
+        } finally {
+          setIsOptimizingBrokerageOnlyContribution(false);
         }
       }, 0);
     });
@@ -6523,31 +6883,6 @@ function GenerationalSavingsCalculator() {
                   </div>
                 ))}
               </div>
-              <MoneyInput
-                label="Starting amount per child"
-                value={startingAmount}
-                onChange={setStartingAmount}
-                max={250000}
-                step={1000}
-              />
-              <MoneyInput
-                label="Monthly contribution per child"
-                value={monthlyContribution}
-                onChange={setMonthlyContribution}
-                max={15000}
-                step={100}
-                displayValue={numberFormatter.format(
-                  Math.round(monthlyContribution),
-                )}
-                helperText={`Yearly contribution: ${formatMoney(monthlyContribution * 12)}`}
-              />
-              <button
-                type="button"
-                onClick={setZeroEndingContribution}
-                className="w-full rounded-xl border border-neutral-950 bg-neutral-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-neutral-800"
-              >
-                End account with $0
-              </button>
             </div>
           </Card>
           <Card className="flex min-h-[560px] flex-col">
@@ -6640,13 +6975,23 @@ function GenerationalSavingsCalculator() {
               title="Investment assumptions"
             />
             <div className="grid gap-4 md:grid-cols-2">
-              <PercentInput
-                label="Education inflation"
-                value={inflation}
-                onChange={setInflation}
-                min={0}
-                max={12}
-                helperText="Applied to future milestone withdrawals."
+              <MoneyInput
+                label="Starting amount per child"
+                value={startingAmount}
+                onChange={setStartingAmount}
+                max={250000}
+                step={1000}
+              />
+              <MoneyInput
+                label="Monthly contribution per child"
+                value={monthlyContribution}
+                onChange={setMonthlyContribution}
+                max={15000}
+                step={100}
+                displayValue={numberFormatter.format(
+                  Math.round(monthlyContribution),
+                )}
+                helperText={`Yearly contribution: ${formatMoney(monthlyContribution * 12)}`}
               />
               <div className="md:col-span-2">
                 <MarketReturnPicker
@@ -6654,6 +6999,13 @@ function GenerationalSavingsCalculator() {
                   onChange={setMarketReturn}
                 />
               </div>
+              <button
+                type="button"
+                onClick={setZeroEndingContribution}
+                className="w-full rounded-xl border border-neutral-950 bg-neutral-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-neutral-800 md:col-span-2"
+              >
+                End account with $0
+              </button>
             </div>
           </Card>
           <div className="grid gap-5 lg:grid-cols-2">
@@ -6718,6 +7070,14 @@ function GenerationalSavingsCalculator() {
                   max={75000}
                   step={500}
                 />
+                <PercentInput
+                  label="Education inflation"
+                  value={inflation}
+                  onChange={setInflation}
+                  min={0}
+                  max={12}
+                  helperText="Applied to future milestone withdrawals."
+                />
                 <div>
                   <div className="text-sm font-medium text-neutral-800">
                     Current annual cost
@@ -6771,11 +7131,23 @@ function GenerationalSavingsCalculator() {
         </div>
         <Card>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <SectionTitle
-              icon={BarChartIcon}
-              title="Advanced tracking"
-              subtitle="A more realistic 529 and brokerage system with a rough tax model for brokerage withdrawal."
-            />
+            <div className="min-w-0">
+              <SectionTitle
+                icon={BarChartIcon}
+                title="Advanced tracking"
+                subtitle="A more realistic 529 and brokerage system with a rough tax model for brokerage withdrawal."
+              />
+              <p className="-mt-2 text-sm leading-6 text-neutral-600">
+                Let's figure out if a 529+brokerage account or just a brokerage
+                account will work best for your needs.
+                <span className="mt-2 block">
+                  <strong className="font-bold text-neutral-700">
+                    Step 1:
+                  </strong>{" "}
+                  Enter information into both sections below.
+                </span>
+              </p>
+            </div>
             <div className="flex shrink-0 items-center gap-3">
               <span className="rounded-full bg-fuchsia-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
                 Beta
@@ -6800,6 +7172,21 @@ function GenerationalSavingsCalculator() {
               brokerageOnlyResult={brokerageOnlyResult}
               startingAmount={startingAmount}
               monthlyContribution={monthlyContribution}
+              marketReturn={marketReturn}
+              setMarketReturn={setMarketReturn}
+              advancedMonthlyContributionNeeded={
+                optimizedAdvancedContribution?.monthlyContribution
+              }
+              advancedStartingAmount529Pct={
+                optimizedAdvancedContribution?.startingAmount529Pct
+              }
+              advancedMonthlyContribution529Pct={
+                optimizedAdvancedContribution?.monthlyContribution529Pct
+              }
+              brokerageOnlyMonthlyContributionNeeded={
+                brokerageOnlyMonthlyContributionNeeded
+              }
+              selectedOptimization={selectedOptimization}
               startingAmount529Pct={startingAmount529Pct}
               monthlyContribution529Pct={monthlyContribution529Pct}
               plan529Return={plan529Return}
@@ -6817,6 +7204,15 @@ function GenerationalSavingsCalculator() {
               optimizeAdvancedContributions={optimizeAdvancedContributions}
               isOptimizingAdvancedContributions={
                 isOptimizingAdvancedContributions
+              }
+              optimizeBrokerageOnlyContribution={
+                optimizeBrokerageOnlyContribution
+              }
+              isOptimizingBrokerageOnlyContribution={
+                isOptimizingBrokerageOnlyContribution
+              }
+              areContributionResultsCalculating={
+                areContributionResultsCalculating
               }
             />
           )}
