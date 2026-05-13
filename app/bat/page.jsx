@@ -1,9 +1,10 @@
-import CombinedRealEstateCalculatorsPreview from '../../components/CombinedRealEstateCalculatorsPreview';
-import JsonLd from '../../components/JsonLd';
-import { socialMetadata } from '../seo';
+import CombinedRealEstateCalculatorsPreview from "../../components/CombinedRealEstateCalculatorsPreview";
+import JsonLd from "../../components/JsonLd";
+import { socialMetadata } from "../seo";
 
 const title = "Bring a Trailer Decision Calculator";
-const description = "Use a simple Bring a Trailer planning calculator to compare your available cash against the price of a potential vehicle purchase.";
+const description =
+  "Use a simple Bring a Trailer planning calculator to compare your available cash against the price of a potential vehicle purchase.";
 
 export const metadata = {
   title,

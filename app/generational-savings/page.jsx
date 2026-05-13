@@ -1,9 +1,10 @@
-import CombinedRealEstateCalculatorsPreview from '../../components/CombinedRealEstateCalculatorsPreview';
-import JsonLd from '../../components/JsonLd';
-import { socialMetadata } from '../seo';
+import CombinedRealEstateCalculatorsPreview from "../../components/CombinedRealEstateCalculatorsPreview";
+import JsonLd from "../../components/JsonLd";
+import { socialMetadata } from "../seo";
 
 const title = "Generational Savings Calculator";
-const description = "Plan savings for kids' cars, college, postgraduate degrees, and home down payments using current costs, inflation, market return assumptions, and monthly contributions.";
+const description =
+  "Plan savings for kids' cars, college, postgraduate degrees, and home down payments using current costs, inflation, market return assumptions, and monthly contributions.";
 
 export const metadata = {
   title,

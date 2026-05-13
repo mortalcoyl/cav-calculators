@@ -1,9 +1,10 @@
-import CombinedRealEstateCalculatorsPreview from '../../components/CombinedRealEstateCalculatorsPreview';
-import JsonLd from '../../components/JsonLd';
-import { socialMetadata } from '../seo';
+import CombinedRealEstateCalculatorsPreview from "../../components/CombinedRealEstateCalculatorsPreview";
+import JsonLd from "../../components/JsonLd";
+import { socialMetadata } from "../seo";
 
 const title = "Medical Costs Calculator | Insurance vs. Self-Funded Care";
-const description = "Compare a yearly invested amount with age-based medical cash costs later in life.";
+const description =
+  "Compare a yearly invested amount with age-based medical cash costs later in life.";
 
 export const metadata = {
   title,

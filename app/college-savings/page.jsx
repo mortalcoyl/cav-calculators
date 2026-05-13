@@ -1,9 +1,10 @@
-import CombinedRealEstateCalculatorsPreview from '../../components/CombinedRealEstateCalculatorsPreview';
-import JsonLd from '../../components/JsonLd';
-import { socialMetadata } from '../seo';
+import CombinedRealEstateCalculatorsPreview from "../../components/CombinedRealEstateCalculatorsPreview";
+import JsonLd from "../../components/JsonLd";
+import { socialMetadata } from "../seo";
 
 const title = "College Savings Calculator";
-const description = "Project college savings for one or more children, including starting balances, monthly contributions, index return assumptions, education inflation, and July tuition plus board withdrawals.";
+const description =
+  "Project college savings for one or more children, including starting balances, monthly contributions, index return assumptions, education inflation, and July tuition plus board withdrawals.";
 
 export const metadata = {
   title,

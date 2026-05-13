@@ -1,9 +1,10 @@
-import CombinedRealEstateCalculatorsPreview from '../../components/CombinedRealEstateCalculatorsPreview';
-import JsonLd from '../../components/JsonLd';
-import { socialMetadata } from '../seo';
+import CombinedRealEstateCalculatorsPreview from "../../components/CombinedRealEstateCalculatorsPreview";
+import JsonLd from "../../components/JsonLd";
+import { socialMetadata } from "../seo";
 
 const title = "Home Value vs. Market Investment Calculator";
-const description = "Compare the estimated outcome of buying and selling a home against investing the same money in the market over time.";
+const description =
+  "Compare the estimated outcome of buying and selling a home against investing the same money in the market over time.";
 
 export const metadata = {
   title,

@@ -1,9 +1,10 @@
-import CombinedRealEstateCalculatorsPreview from '../../components/CombinedRealEstateCalculatorsPreview';
-import JsonLd from '../../components/JsonLd';
-import { socialMetadata } from '../seo';
+import CombinedRealEstateCalculatorsPreview from "../../components/CombinedRealEstateCalculatorsPreview";
+import JsonLd from "../../components/JsonLd";
+import { socialMetadata } from "../seo";
 
 const title = "Retirement Calculator | Savings, Spending, and Tax Bracket";
-const description = "Project retirement savings, annual contributions, inflation-adjusted spending, retirement returns, and an auto-filled 2025 federal tax bracket.";
+const description =
+  "Project retirement savings, annual contributions, inflation-adjusted spending, retirement returns, and an auto-filled 2025 federal tax bracket.";
 
 export const metadata = {
   title,

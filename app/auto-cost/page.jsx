@@ -1,9 +1,10 @@
-import CombinedRealEstateCalculatorsPreview from '../../components/CombinedRealEstateCalculatorsPreview';
-import JsonLd from '../../components/JsonLd';
-import { socialMetadata } from '../seo';
+import CombinedRealEstateCalculatorsPreview from "../../components/CombinedRealEstateCalculatorsPreview";
+import JsonLd from "../../components/JsonLd";
+import { socialMetadata } from "../seo";
 
 const title = "New Car vs. Used Car vs. Leased Car Calculator";
-const description = "Compare estimated ownership costs for new cars, used cars, and leases, including payments, insurance, maintenance, fuel, depreciation, and invested savings.";
+const description =
+  "Compare estimated ownership costs for new cars, used cars, and leases, including payments, insurance, maintenance, fuel, depreciation, and invested savings.";
 
 export const metadata = {
   title,
