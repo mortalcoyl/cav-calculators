@@ -7,6 +7,7 @@ import {
   LineChart,
   Line,
   BarChart,
+  ComposedChart,
   Bar,
   XAxis,
   YAxis,
@@ -82,6 +83,28 @@ const RETIREMENT_TAX_FILING_STATUSES = [
     id: "married-joint",
     label: "Married filing jointly",
     brackets: RETIREMENT_TAX_BRACKETS_2025_MARRIED_JOINT,
+  },
+];
+const CAPITAL_GAINS_TAX_BRACKETS_2025_SINGLE = [
+  { rate: 0, min: 0, max: 48350 },
+  { rate: 15, min: 48351, max: 533400 },
+  { rate: 20, min: 533401, max: Infinity },
+];
+const CAPITAL_GAINS_TAX_BRACKETS_2025_MARRIED_JOINT = [
+  { rate: 0, min: 0, max: 96700 },
+  { rate: 15, min: 96701, max: 600050 },
+  { rate: 20, min: 600051, max: Infinity },
+];
+const CAPITAL_GAINS_TAX_FILING_STATUSES = [
+  {
+    id: "single",
+    label: "Single",
+    brackets: CAPITAL_GAINS_TAX_BRACKETS_2025_SINGLE,
+  },
+  {
+    id: "married-joint",
+    label: "Married filing jointly",
+    brackets: CAPITAL_GAINS_TAX_BRACKETS_2025_MARRIED_JOINT,
   },
 ];
 const RENT_VS_BUY_TABLE_COLUMNS = [
@@ -350,6 +373,25 @@ function getRetirementTaxBracket2025(spending, filingStatus = "single") {
         : `${bracket.rate}% for ${formatMoney(bracket.min)}-${formatMoney(bracket.max)}`,
   };
 }
+function getCapitalGainsTaxBracket2025(taxableIncome, filingStatus = "single") {
+  const status =
+    CAPITAL_GAINS_TAX_FILING_STATUSES.find(
+      (item) => item.id === filingStatus,
+    ) || CAPITAL_GAINS_TAX_FILING_STATUSES[0];
+  const bracket =
+    status.brackets.find(
+      (item) => taxableIncome >= item.min && taxableIncome <= item.max,
+    ) || status.brackets[status.brackets.length - 1];
+  return {
+    ...bracket,
+    filingStatus: status.id,
+    filingStatusLabel: status.label,
+    label:
+      bracket.max === Infinity
+        ? `${bracket.rate}% over ${formatMoney(bracket.min - 1)}`
+        : `${bracket.rate}% for ${formatMoney(bracket.min)}-${formatMoney(bracket.max)}`,
+  };
+}
 function getGenerationalBrokerageTaxRate({
   month,
   currentAge,
@@ -360,7 +402,7 @@ function getGenerationalBrokerageTaxRate({
   const ageAtWithdrawal = currentAge + month / 12;
   const taxableIncome =
     ageAtWithdrawal >= retirementAge ? retirementSalary : currentSalary;
-  return getRetirementTaxBracket2025(taxableIncome).rate / 100;
+  return getCapitalGainsTaxBracket2025(taxableIncome).rate / 100;
 }
 function toExportFilename(title) {
   return `${
@@ -5700,6 +5742,7 @@ function findGenerationalOptimizedAdvancedContributions({
 
 function AdvancedGenerationalTrackingPanel({
   result,
+  brokerageOnlyResult,
   startingAmount,
   monthlyContribution,
   startingAmount529Pct,
@@ -5719,8 +5762,21 @@ function AdvancedGenerationalTrackingPanel({
   optimizeAdvancedContributions,
   isOptimizingAdvancedContributions,
 }) {
-  const currentTaxBracket = getRetirementTaxBracket2025(currentSalary);
-  const retirementTaxBracket = getRetirementTaxBracket2025(retirementSalary);
+  const [comparisonSeriesVisibility, setComparisonSeriesVisibility] = useState({
+    balance529Brokerage: true,
+    balanceBrokerageOnly: true,
+    tax529Brokerage: true,
+    taxBrokerageOnly: true,
+  });
+  const toggleComparisonSeries = (key) =>
+    setComparisonSeriesVisibility((current) => ({
+      ...current,
+      [key]: !current[key],
+    }));
+  const currentCapitalGainsBracket =
+    getCapitalGainsTaxBracket2025(currentSalary);
+  const retirementCapitalGainsBracket =
+    getCapitalGainsTaxBracket2025(retirementSalary);
   const brokerageTaxChartData = result.rows
     .filter(
       (row) => row.brokerageNetWithdrawal > 0 || row.brokerageWithdrawalTax > 0,
@@ -5730,6 +5786,40 @@ function AdvancedGenerationalTrackingPanel({
       "Brokerage to milestone": row.brokerageNetWithdrawal,
       "Brokerage tax": row.brokerageWithdrawalTax,
     }));
+  const brokerageOnlyRowsByMonth = new Map(
+    brokerageOnlyResult.rows.map((row) => [row.month, row]),
+  );
+  const balanceComparisonChartData = result.rows.map((row) => ({
+    year: row.year,
+    "529 and brokerage": row.combinedBalance,
+    "Brokerage only":
+      brokerageOnlyRowsByMonth.get(row.month)?.combinedBalance ?? 0,
+    "529 + brokerage tax": row.brokerageWithdrawalTax,
+    "Brokerage-only tax":
+      brokerageOnlyRowsByMonth.get(row.month)?.brokerageWithdrawalTax ?? 0,
+  }));
+  const comparisonSeriesControls = [
+    {
+      key: "balance529Brokerage",
+      label: "529 + brokerage balance",
+      color: "#2563eb",
+    },
+    {
+      key: "balanceBrokerageOnly",
+      label: "Brokerage-only balance",
+      color: "#0f172a",
+    },
+    {
+      key: "tax529Brokerage",
+      label: "529 + brokerage tax",
+      color: "#93c5fd",
+    },
+    {
+      key: "taxBrokerageOnly",
+      label: "Brokerage-only tax",
+      color: "#64748b",
+    },
+  ];
   return (
     <div className="mt-5 space-y-5">
       <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
@@ -5850,7 +5940,7 @@ function AdvancedGenerationalTrackingPanel({
         <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
           <div>
             <h3 className="mb-3 text-sm font-bold tracking-tight text-neutral-950">
-              Tax information for brokerage withdrawal
+              Capital gains tax information for brokerage withdrawal
             </h3>
             <div className="space-y-4">
               <RangeInput
@@ -5867,7 +5957,7 @@ function AdvancedGenerationalTrackingPanel({
                 onChange={setCurrentSalary}
                 max={1000000}
                 step={5000}
-                helperText={`${formatPercent(currentTaxBracket.rate)} before retirement`}
+                helperText={`${formatPercent(currentCapitalGainsBracket.rate)} long-term capital gains before retirement`}
               />
               <RangeInput
                 label="Retirement age"
@@ -5883,7 +5973,7 @@ function AdvancedGenerationalTrackingPanel({
                 onChange={setRetirementSalary}
                 max={1000000}
                 step={5000}
-                helperText={`${formatPercent(retirementTaxBracket.rate)} after retirement`}
+                helperText={`${formatPercent(retirementCapitalGainsBracket.rate)} long-term capital gains after retirement`}
               />
             </div>
           </div>
@@ -5938,6 +6028,123 @@ function AdvancedGenerationalTrackingPanel({
               </div>
             )}
           </div>
+        </div>
+      </div>
+      <div>
+        <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <h3 className="text-sm font-bold tracking-tight text-neutral-950">
+            529 + Brokerage vs. Only Brokerage
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {comparisonSeriesControls.map((control) => {
+              const isVisible = comparisonSeriesVisibility[control.key];
+              return (
+                <button
+                  key={control.key}
+                  type="button"
+                  onClick={() => toggleComparisonSeries(control.key)}
+                  aria-pressed={isVisible}
+                  className={`inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-bold transition ${
+                    isVisible
+                      ? "border-neutral-950 bg-neutral-950 text-white"
+                      : "border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300"
+                  }`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{ backgroundColor: control.color }}
+                  />
+                  {control.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="h-[420px] rounded-xl border border-neutral-200 bg-white p-3">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart
+              data={balanceComparisonChartData}
+              margin={{ top: 10, right: 20, left: 0, bottom: 16 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="year"
+                type="number"
+                domain={[0, Math.ceil(result.horizonYears)]}
+                allowDecimals={false}
+                tick={CHART_AXIS_TICK}
+                tickLine={false}
+                axisLine={false}
+                height={56}
+                label={{
+                  ...CHART_AXIS_LABEL,
+                  value: "Years from today",
+                  position: "insideBottom",
+                  offset: 10,
+                }}
+              />
+              <YAxis
+                yAxisId="balance"
+                tick={CHART_AXIS_TICK}
+                tickFormatter={formatCompactMoney}
+                tickLine={false}
+                axisLine={false}
+                width={72}
+              />
+              <YAxis
+                yAxisId="tax"
+                orientation="right"
+                tick={CHART_AXIS_TICK}
+                tickFormatter={formatCompactMoney}
+                tickLine={false}
+                axisLine={false}
+                width={72}
+              />
+              <Tooltip content={<ChartTooltip />} />
+              <Legend
+                verticalAlign="bottom"
+                wrapperStyle={CHART_BOTTOM_LEGEND_WRAPPER_STYLE}
+              />
+              {comparisonSeriesVisibility.tax529Brokerage && (
+                <Bar
+                  yAxisId="tax"
+                  dataKey="529 + brokerage tax"
+                  fill="#93c5fd"
+                  barSize={16}
+                />
+              )}
+              {comparisonSeriesVisibility.taxBrokerageOnly && (
+                <Bar
+                  yAxisId="tax"
+                  dataKey="Brokerage-only tax"
+                  fill="#64748b"
+                  barSize={16}
+                />
+              )}
+              {comparisonSeriesVisibility.balance529Brokerage && (
+                <Line
+                  yAxisId="balance"
+                  type="monotone"
+                  dataKey="529 and brokerage"
+                  stroke="#2563eb"
+                  strokeWidth={3}
+                  dot={false}
+                />
+              )}
+              {comparisonSeriesVisibility.balanceBrokerageOnly && (
+                <Line
+                  yAxisId="balance"
+                  type="monotone"
+                  dataKey="Brokerage only"
+                  stroke="#0f172a"
+                  strokeDasharray="6 4"
+                  strokeWidth={3}
+                  dot={false}
+                />
+              )}
+            </ComposedChart>
+          </ResponsiveContainer>
         </div>
       </div>
       <p className="text-xs italic leading-5 text-neutral-500">
@@ -6187,6 +6394,51 @@ function GenerationalSavingsCalculator() {
       startingAmount529Pct,
       monthlyContribution529Pct,
       plan529Return,
+      advancedCurrentAge,
+      advancedCurrentSalary,
+      advancedRetirementAge,
+      advancedRetirementSalary,
+    ],
+  );
+  const brokerageOnlyResult = useMemo(
+    () =>
+      calculateGenerationalSavingsScenario({
+        children,
+        startingAmount,
+        monthlyContribution,
+        marketReturn,
+        inflation,
+        carCost,
+        annualTuition,
+        annualBoard,
+        annualPostgradTuition,
+        annualPostgradBoard,
+        postgradYears,
+        downPayment,
+        downPaymentAge,
+        advancedTracking: true,
+        startingAmount529Pct: 0,
+        monthlyContribution529Pct: 0,
+        plan529Return: marketReturn,
+        currentAge: advancedCurrentAge,
+        currentSalary: advancedCurrentSalary,
+        retirementAge: advancedRetirementAge,
+        retirementSalary: advancedRetirementSalary,
+      }),
+    [
+      children,
+      startingAmount,
+      monthlyContribution,
+      marketReturn,
+      inflation,
+      carCost,
+      annualTuition,
+      annualBoard,
+      annualPostgradTuition,
+      annualPostgradBoard,
+      postgradYears,
+      downPayment,
+      downPaymentAge,
       advancedCurrentAge,
       advancedCurrentSalary,
       advancedRetirementAge,
@@ -6545,6 +6797,7 @@ function GenerationalSavingsCalculator() {
           {showAdvancedInvestment && (
             <AdvancedGenerationalTrackingPanel
               result={result}
+              brokerageOnlyResult={brokerageOnlyResult}
               startingAmount={startingAmount}
               monthlyContribution={monthlyContribution}
               startingAmount529Pct={startingAmount529Pct}
