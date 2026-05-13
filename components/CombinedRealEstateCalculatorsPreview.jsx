@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   LineChart,
   Line,
-  BarChart,
   ComposedChart,
   Bar,
   XAxis,
@@ -5744,15 +5743,11 @@ function AdvancedGenerationalTrackingPanel({
   result,
   brokerageOnlyResult,
   startingAmount,
-  monthlyContribution,
+  setStartingAmount,
   marketReturn,
   setMarketReturn,
-  startingAmount529Pct,
-  monthlyContribution529Pct,
   plan529Return,
   setPlan529Return,
-  setStartingAmount529Pct,
-  setMonthlyContribution529Pct,
   currentAge,
   setCurrentAge,
   currentSalary,
@@ -5761,20 +5756,17 @@ function AdvancedGenerationalTrackingPanel({
   setRetirementAge,
   retirementSalary,
   setRetirementSalary,
-  optimizeAdvancedContributions,
-  isOptimizingAdvancedContributions,
   advancedMonthlyContributionNeeded,
   advancedStartingAmount529Pct,
   advancedMonthlyContribution529Pct,
-  optimizeBrokerageOnlyContribution,
-  isOptimizingBrokerageOnlyContribution,
   brokerageOnlyMonthlyContributionNeeded,
   areContributionResultsCalculating,
-  selectedOptimization,
 }) {
   const [comparisonSeriesVisibility, setComparisonSeriesVisibility] = useState({
     balance529Brokerage: true,
     balanceBrokerageOnly: true,
+    balance529: false,
+    balanceBrokerage: false,
     tax529Brokerage: false,
     taxBrokerageOnly: false,
   });
@@ -5787,21 +5779,14 @@ function AdvancedGenerationalTrackingPanel({
     getCapitalGainsTaxBracket2025(currentSalary);
   const retirementCapitalGainsBracket =
     getCapitalGainsTaxBracket2025(retirementSalary);
-  const brokerageTaxChartData = result.rows
-    .filter(
-      (row) => row.brokerageNetWithdrawal > 0 || row.brokerageWithdrawalTax > 0,
-    )
-    .map((row) => ({
-      ...row,
-      "Brokerage to milestone": row.brokerageNetWithdrawal,
-      "Brokerage tax": row.brokerageWithdrawalTax,
-    }));
   const brokerageOnlyRowsByMonth = new Map(
     brokerageOnlyResult.rows.map((row) => [row.month, row]),
   );
   const balanceComparisonChartData = result.rows.map((row) => ({
     year: row.year,
     "529 and brokerage": row.combinedBalance,
+    "529 balance": row.combined529Balance,
+    "Brokerage balance": row.combinedBrokerageBalance,
     "Brokerage only":
       brokerageOnlyRowsByMonth.get(row.month)?.combinedBalance ?? 0,
     "529 + brokerage tax": row.brokerageWithdrawalTax,
@@ -5820,6 +5805,16 @@ function AdvancedGenerationalTrackingPanel({
       color: "#0f172a",
     },
     {
+      key: "balance529",
+      label: "529 balance",
+      color: "#7c3aed",
+    },
+    {
+      key: "balanceBrokerage",
+      label: "Brokerage balance",
+      color: "#d97706",
+    },
+    {
       key: "tax529Brokerage",
       label: "529 + brokerage tax",
       color: "#93c5fd",
@@ -5830,9 +5825,6 @@ function AdvancedGenerationalTrackingPanel({
       color: "#64748b",
     },
   ];
-  const isAdvancedOptimizationSelected = selectedOptimization === "advanced";
-  const isBrokerageOnlyOptimizationSelected =
-    selectedOptimization === "brokerage-only";
   const hasContributionResults =
     Number.isFinite(advancedMonthlyContributionNeeded) &&
     Number.isFinite(brokerageOnlyMonthlyContributionNeeded);
@@ -5893,34 +5885,29 @@ function AdvancedGenerationalTrackingPanel({
   ];
   return (
     <div className="mt-5 space-y-5">
+      <div>
+        <p className="mb-3 text-sm leading-6 text-neutral-600">
+          <strong className="font-bold text-neutral-700">Step 1:</strong> Enter
+          the starting amount per child.
+        </p>
+        <MoneyInput
+          label="Starting amount per child"
+          value={startingAmount}
+          onChange={setStartingAmount}
+          max={250000}
+          step={1000}
+        />
+      </div>
+      <p className="border-t border-neutral-200 pt-5 text-sm leading-6 text-neutral-600">
+        <strong className="font-bold text-neutral-700">Step 2:</strong> Enter
+        information into both sections below.
+      </p>
       <div className="grid gap-5 lg:grid-cols-2">
         <div>
           <h3 className="mb-3 text-sm font-bold tracking-tight text-neutral-950">
             529 and Brokerage information
           </h3>
           <div className="space-y-4 lg:min-h-[360px]">
-            <PercentInput
-              label="% of starting amount in 529"
-              value={startingAmount529Pct}
-              onChange={(value) => setStartingAmount529Pct(Math.round(value))}
-              min={0}
-              max={100}
-              step={1}
-              formatDisplayValue={(value) => String(Math.round(value))}
-              helperText={`${formatMoney(startingAmount * (startingAmount529Pct / 100))} starts in 529 per child`}
-            />
-            <PercentInput
-              label="% of monthly contribution in 529"
-              value={monthlyContribution529Pct}
-              onChange={(value) =>
-                setMonthlyContribution529Pct(Math.round(value))
-              }
-              min={0}
-              max={100}
-              step={1}
-              formatDisplayValue={(value) => String(Math.round(value))}
-              helperText={`${formatMoney(monthlyContribution * (monthlyContribution529Pct / 100))} / month to 529 per child`}
-            />
             <PercentInput
               label="529 rate of return"
               value={plan529Return}
@@ -5949,7 +5936,7 @@ function AdvancedGenerationalTrackingPanel({
       </div>
       <div className="border-t border-neutral-200 pt-5">
         <p className="mb-3 text-sm leading-6 text-neutral-600">
-          <strong className="font-bold text-neutral-700">Step 2:</strong> Enter
+          <strong className="font-bold text-neutral-700">Step 3:</strong> Enter
           your Salary and retirement information below so we can determine a
           proper capital gains tax for brokerage withdrawals
         </p>
@@ -5997,10 +5984,9 @@ function AdvancedGenerationalTrackingPanel({
           </div>
         </div>
       </div>
-      <p className="text-sm leading-6 text-neutral-600">
-        <strong className="font-bold text-neutral-700">Step 3:</strong> Look at
-        the Monthly contributions above and select to optimize for the lower
-        one.
+      <p className="border-t border-neutral-200 pt-5 text-sm leading-6 text-neutral-600">
+        <strong className="font-bold text-neutral-700">Step 4:</strong> The more
+        effective option will appear in green below.
       </p>
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="flex flex-col gap-4">
@@ -6025,39 +6011,6 @@ function AdvancedGenerationalTrackingPanel({
               ))}
             </div>
           </div>
-          <div className="mt-auto">
-            <button
-              type="button"
-              aria-pressed={isAdvancedOptimizationSelected}
-              onClick={optimizeAdvancedContributions}
-              disabled={
-                isOptimizingAdvancedContributions ||
-                isOptimizingBrokerageOnlyContribution
-              }
-              className={`flex h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold transition disabled:cursor-wait disabled:opacity-75 ${
-                isAdvancedOptimizationSelected
-                  ? "border-neutral-950 bg-neutral-950 text-white hover:bg-neutral-800"
-                  : "border-neutral-300 bg-white text-neutral-950 hover:border-neutral-950"
-              }`}
-            >
-              {isOptimizingAdvancedContributions && (
-                <span
-                  aria-hidden="true"
-                  className={`h-4 w-4 animate-spin rounded-full border-2 ${
-                    isAdvancedOptimizationSelected
-                      ? "border-white/35 border-t-white"
-                      : "border-neutral-300 border-t-neutral-950"
-                  }`}
-                />
-              )}
-              {isOptimizingAdvancedContributions
-                ? "Thinking..."
-                : "Optimize 529 and brokerage"}
-            </button>
-            <p className="mt-1 text-xs leading-5 text-neutral-500">
-              Will attempt to optimize investments to end both accounts at $0.
-            </p>
-          </div>
         </div>
         <div className="flex flex-col gap-4 lg:border-l lg:border-neutral-200 lg:pl-5">
           <div className={resultCardClass(brokerageOnlyResultIsLower)}>
@@ -6080,40 +6033,6 @@ function AdvancedGenerationalTrackingPanel({
                 </div>
               ))}
             </div>
-          </div>
-          <div className="mt-auto">
-            <button
-              type="button"
-              aria-pressed={isBrokerageOnlyOptimizationSelected}
-              onClick={optimizeBrokerageOnlyContribution}
-              disabled={
-                isOptimizingBrokerageOnlyContribution ||
-                isOptimizingAdvancedContributions
-              }
-              className={`flex h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold transition disabled:cursor-wait disabled:opacity-75 ${
-                isBrokerageOnlyOptimizationSelected
-                  ? "border-neutral-950 bg-neutral-950 text-white hover:bg-neutral-800"
-                  : "border-neutral-300 bg-white text-neutral-950 hover:border-neutral-950"
-              }`}
-            >
-              {isOptimizingBrokerageOnlyContribution && (
-                <span
-                  aria-hidden="true"
-                  className={`h-4 w-4 animate-spin rounded-full border-2 ${
-                    isBrokerageOnlyOptimizationSelected
-                      ? "border-white/35 border-t-white"
-                      : "border-neutral-300 border-t-neutral-950"
-                  }`}
-                />
-              )}
-              {isOptimizingBrokerageOnlyContribution
-                ? "Thinking..."
-                : "Optimize brokerage only"}
-            </button>
-            <p className="mt-1 text-xs leading-5 text-neutral-500">
-              Will attempt to optimize brokerage-only monthly contributions to
-              end at $0.
-            </p>
           </div>
         </div>
       </div>
@@ -6203,6 +6122,26 @@ function AdvancedGenerationalTrackingPanel({
                   dot={false}
                 />
               )}
+              {comparisonSeriesVisibility.balance529 && (
+                <Line
+                  yAxisId="balance"
+                  type="monotone"
+                  dataKey="529 balance"
+                  stroke="#7c3aed"
+                  strokeWidth={3}
+                  dot={false}
+                />
+              )}
+              {comparisonSeriesVisibility.balanceBrokerage && (
+                <Line
+                  yAxisId="balance"
+                  type="monotone"
+                  dataKey="Brokerage balance"
+                  stroke="#d97706"
+                  strokeWidth={3}
+                  dot={false}
+                />
+              )}
             </ComposedChart>
           </ResponsiveContainer>
         </div>
@@ -6230,121 +6169,6 @@ function AdvancedGenerationalTrackingPanel({
               </button>
             );
           })}
-        </div>
-      </div>
-      <div>
-        <h3 className="mb-3 text-sm font-bold tracking-tight text-neutral-950">
-          Tax graph for milestone withddrawal
-        </h3>
-        <div className="h-[420px] rounded-xl border border-neutral-200 bg-white p-3">
-          {brokerageTaxChartData.length ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={brokerageTaxChartData}
-                margin={{ top: 10, right: 20, left: 0, bottom: 16 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="year"
-                  tick={CHART_AXIS_TICK}
-                  tickLine={false}
-                  axisLine={false}
-                  height={56}
-                  label={{
-                    ...CHART_AXIS_LABEL,
-                    value: "Years from today",
-                    position: "insideBottom",
-                    offset: 10,
-                  }}
-                />
-                <YAxis
-                  tick={CHART_AXIS_TICK}
-                  tickFormatter={formatCompactMoney}
-                  tickLine={false}
-                  axisLine={false}
-                  width={72}
-                />
-                <Tooltip content={<ChartTooltip />} />
-                <Legend
-                  verticalAlign="bottom"
-                  wrapperStyle={CHART_BOTTOM_LEGEND_WRAPPER_STYLE}
-                />
-                <Bar
-                  dataKey="Brokerage to milestone"
-                  stackId="brokerage"
-                  fill="#0284c7"
-                />
-                <Bar
-                  dataKey="Brokerage tax"
-                  stackId="brokerage"
-                  fill="#7dd3fc"
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex h-full items-center justify-center text-center text-sm font-semibold text-neutral-500">
-              No brokerage withdrawals in the current plan.
-            </div>
-          )}
-        </div>
-      </div>
-      <div>
-        <h3 className="mb-3 text-sm font-bold tracking-tight text-neutral-950">
-          529 and brokerage balances
-        </h3>
-        <div className="h-[420px] rounded-xl border border-neutral-200 bg-white p-3">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={result.rows}
-              margin={{ top: 10, right: 20, left: 0, bottom: 16 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="year"
-                type="number"
-                domain={[0, Math.ceil(result.horizonYears)]}
-                allowDecimals={false}
-                tick={CHART_AXIS_TICK}
-                tickLine={false}
-                axisLine={false}
-                height={56}
-                label={{
-                  ...CHART_AXIS_LABEL,
-                  value: "Years from today",
-                  position: "insideBottom",
-                  offset: 10,
-                }}
-              />
-              <YAxis
-                tick={CHART_AXIS_TICK}
-                tickFormatter={formatCompactMoney}
-                tickLine={false}
-                axisLine={false}
-                width={72}
-              />
-              <Tooltip content={<ChartTooltip />} />
-              <Legend
-                verticalAlign="bottom"
-                wrapperStyle={CHART_BOTTOM_LEGEND_WRAPPER_STYLE}
-              />
-              <Line
-                type="monotone"
-                dataKey="combined529Balance"
-                name="529 Balance"
-                stroke="#7c3aed"
-                strokeWidth={3}
-                dot={false}
-              />
-              <Line
-                type="monotone"
-                dataKey="combinedBrokerageBalance"
-                name="Brokerage Balance"
-                stroke="#d97706"
-                strokeWidth={3}
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
         </div>
       </div>
       <p className="text-xs italic leading-5 text-neutral-500">
@@ -6428,17 +6252,16 @@ function GenerationalSavingsCalculator() {
   );
   const [showAdvancedInvestment, setShowAdvancedInvestment] =
     useCalculatorState("generational-savings", "showAdvancedInvestment", false);
-  const [startingAmount529Pct, setStartingAmount529Pct] = useCalculatorState(
+  const [startingAmount529Pct] = useCalculatorState(
     "generational-savings",
     "startingAmount529Pct",
     100,
   );
-  const [monthlyContribution529Pct, setMonthlyContribution529Pct] =
-    useCalculatorState(
-      "generational-savings",
-      "monthlyContribution529Pct",
-      100,
-    );
+  const [monthlyContribution529Pct] = useCalculatorState(
+    "generational-savings",
+    "monthlyContribution529Pct",
+    100,
+  );
   const [plan529Return, setPlan529Return] = useCalculatorState(
     "generational-savings",
     "plan529Return",
@@ -6465,15 +6288,6 @@ function GenerationalSavingsCalculator() {
       "advancedRetirementSalary",
       80000,
     );
-  const [
-    isOptimizingAdvancedContributions,
-    setIsOptimizingAdvancedContributions,
-  ] = useState(false);
-  const [
-    isOptimizingBrokerageOnlyContribution,
-    setIsOptimizingBrokerageOnlyContribution,
-  ] = useState(false);
-  const [selectedOptimization, setSelectedOptimization] = useState(null);
   const [optimizedAdvancedContribution, setOptimizedAdvancedContribution] =
     useState(null);
   const [
@@ -6484,6 +6298,55 @@ function GenerationalSavingsCalculator() {
     areContributionResultsCalculating,
     setAreContributionResultsCalculating,
   ] = useState(false);
+  const generationalInputs = useMemo(
+    () => ({
+      children,
+      startingAmount,
+      monthlyContribution,
+      marketReturn,
+      inflation,
+      carCost,
+      annualTuition,
+      annualBoard,
+      annualPostgradTuition,
+      annualPostgradBoard,
+      postgradYears,
+      downPayment,
+      downPaymentAge,
+      showAdvancedInvestment,
+      startingAmount529Pct,
+      monthlyContribution529Pct,
+      plan529Return,
+      advancedCurrentAge,
+      advancedCurrentSalary,
+      advancedRetirementAge,
+      advancedRetirementSalary,
+    }),
+    [
+      children,
+      startingAmount,
+      monthlyContribution,
+      marketReturn,
+      inflation,
+      carCost,
+      annualTuition,
+      annualBoard,
+      annualPostgradTuition,
+      annualPostgradBoard,
+      postgradYears,
+      downPayment,
+      downPaymentAge,
+      showAdvancedInvestment,
+      startingAmount529Pct,
+      monthlyContribution529Pct,
+      plan529Return,
+      advancedCurrentAge,
+      advancedCurrentSalary,
+      advancedRetirementAge,
+      advancedRetirementSalary,
+    ],
+  );
+  const deferredGenerationalInputs = useDeferredValue(generationalInputs);
   const setSafeChildCount = (nextCount) => {
     const count = clampNumber(parseNumber(nextCount), 1, 6);
     setChildCount(count);
@@ -6530,53 +6393,55 @@ function GenerationalSavingsCalculator() {
       }),
     );
   useEffect(() => {
-    if (!showAdvancedInvestment) return undefined;
+    if (!deferredGenerationalInputs.showAdvancedInvestment) return undefined;
     let isCancelled = false;
     setAreContributionResultsCalculating(true);
     const timeout = window.setTimeout(() => {
       const nextOptimizedAdvancedContribution =
         findGenerationalOptimizedAdvancedContributions({
-          children,
-          startingAmount,
-          marketReturn,
-          inflation,
-          carCost,
-          annualTuition,
-          annualBoard,
-          annualPostgradTuition,
-          annualPostgradBoard,
-          postgradYears,
-          downPayment,
-          downPaymentAge,
-          startingAmount529Pct,
-          plan529Return,
-          currentAge: advancedCurrentAge,
-          currentSalary: advancedCurrentSalary,
-          retirementAge: advancedRetirementAge,
-          retirementSalary: advancedRetirementSalary,
+          children: deferredGenerationalInputs.children,
+          startingAmount: deferredGenerationalInputs.startingAmount,
+          marketReturn: deferredGenerationalInputs.marketReturn,
+          inflation: deferredGenerationalInputs.inflation,
+          carCost: deferredGenerationalInputs.carCost,
+          annualTuition: deferredGenerationalInputs.annualTuition,
+          annualBoard: deferredGenerationalInputs.annualBoard,
+          annualPostgradTuition:
+            deferredGenerationalInputs.annualPostgradTuition,
+          annualPostgradBoard: deferredGenerationalInputs.annualPostgradBoard,
+          postgradYears: deferredGenerationalInputs.postgradYears,
+          downPayment: deferredGenerationalInputs.downPayment,
+          downPaymentAge: deferredGenerationalInputs.downPaymentAge,
+          startingAmount529Pct: deferredGenerationalInputs.startingAmount529Pct,
+          plan529Return: deferredGenerationalInputs.plan529Return,
+          currentAge: deferredGenerationalInputs.advancedCurrentAge,
+          currentSalary: deferredGenerationalInputs.advancedCurrentSalary,
+          retirementAge: deferredGenerationalInputs.advancedRetirementAge,
+          retirementSalary: deferredGenerationalInputs.advancedRetirementSalary,
         });
       const nextBrokerageOnlyMonthlyContribution =
         findGenerationalZeroBalanceContribution({
-          children,
-          startingAmount,
-          marketReturn,
-          inflation,
-          carCost,
-          annualTuition,
-          annualBoard,
-          annualPostgradTuition,
-          annualPostgradBoard,
-          postgradYears,
-          downPayment,
-          downPaymentAge,
+          children: deferredGenerationalInputs.children,
+          startingAmount: deferredGenerationalInputs.startingAmount,
+          marketReturn: deferredGenerationalInputs.marketReturn,
+          inflation: deferredGenerationalInputs.inflation,
+          carCost: deferredGenerationalInputs.carCost,
+          annualTuition: deferredGenerationalInputs.annualTuition,
+          annualBoard: deferredGenerationalInputs.annualBoard,
+          annualPostgradTuition:
+            deferredGenerationalInputs.annualPostgradTuition,
+          annualPostgradBoard: deferredGenerationalInputs.annualPostgradBoard,
+          postgradYears: deferredGenerationalInputs.postgradYears,
+          downPayment: deferredGenerationalInputs.downPayment,
+          downPaymentAge: deferredGenerationalInputs.downPaymentAge,
           advancedTracking: true,
           startingAmount529Pct: 0,
           monthlyContribution529Pct: 0,
-          plan529Return: marketReturn,
-          currentAge: advancedCurrentAge,
-          currentSalary: advancedCurrentSalary,
-          retirementAge: advancedRetirementAge,
-          retirementSalary: advancedRetirementSalary,
+          plan529Return: deferredGenerationalInputs.marketReturn,
+          currentAge: deferredGenerationalInputs.advancedCurrentAge,
+          currentSalary: deferredGenerationalInputs.advancedCurrentSalary,
+          retirementAge: deferredGenerationalInputs.advancedRetirementAge,
+          retirementSalary: deferredGenerationalInputs.advancedRetirementSalary,
         });
       if (isCancelled) return;
       setOptimizedAdvancedContribution(nextOptimizedAdvancedContribution);
@@ -6584,269 +6449,210 @@ function GenerationalSavingsCalculator() {
         nextBrokerageOnlyMonthlyContribution,
       );
       setAreContributionResultsCalculating(false);
-    }, 150);
+    }, 500);
     return () => {
       isCancelled = true;
       window.clearTimeout(timeout);
     };
+  }, [deferredGenerationalInputs]);
+  const result = useMemo(() => {
+    const inputs = deferredGenerationalInputs;
+    return calculateGenerationalSavingsScenario({
+      children: inputs.children,
+      startingAmount: inputs.startingAmount,
+      monthlyContribution: inputs.monthlyContribution,
+      marketReturn: inputs.marketReturn,
+      inflation: inputs.inflation,
+      carCost: inputs.carCost,
+      annualTuition: inputs.annualTuition,
+      annualBoard: inputs.annualBoard,
+      annualPostgradTuition: inputs.annualPostgradTuition,
+      annualPostgradBoard: inputs.annualPostgradBoard,
+      postgradYears: inputs.postgradYears,
+      downPayment: inputs.downPayment,
+      downPaymentAge: inputs.downPaymentAge,
+      advancedTracking: inputs.showAdvancedInvestment,
+      startingAmount529Pct: inputs.startingAmount529Pct,
+      monthlyContribution529Pct: inputs.monthlyContribution529Pct,
+      plan529Return: inputs.plan529Return,
+      currentAge: inputs.advancedCurrentAge,
+      currentSalary: inputs.advancedCurrentSalary,
+      retirementAge: inputs.advancedRetirementAge,
+      retirementSalary: inputs.advancedRetirementSalary,
+    });
+  }, [deferredGenerationalInputs]);
+  const brokerageOnlyResult = useMemo(() => {
+    if (!deferredGenerationalInputs.showAdvancedInvestment) return result;
+    const inputs = deferredGenerationalInputs;
+    return calculateGenerationalSavingsScenario({
+      children: inputs.children,
+      startingAmount: inputs.startingAmount,
+      monthlyContribution: inputs.monthlyContribution,
+      marketReturn: inputs.marketReturn,
+      inflation: inputs.inflation,
+      carCost: inputs.carCost,
+      annualTuition: inputs.annualTuition,
+      annualBoard: inputs.annualBoard,
+      annualPostgradTuition: inputs.annualPostgradTuition,
+      annualPostgradBoard: inputs.annualPostgradBoard,
+      postgradYears: inputs.postgradYears,
+      downPayment: inputs.downPayment,
+      downPaymentAge: inputs.downPaymentAge,
+      advancedTracking: true,
+      startingAmount529Pct: 0,
+      monthlyContribution529Pct: 0,
+      plan529Return: inputs.marketReturn,
+      currentAge: inputs.advancedCurrentAge,
+      currentSalary: inputs.advancedCurrentSalary,
+      retirementAge: inputs.advancedRetirementAge,
+      retirementSalary: inputs.advancedRetirementSalary,
+    });
+  }, [deferredGenerationalInputs, result]);
+  const hasAutomaticOptimizedResults =
+    showAdvancedInvestment &&
+    !areContributionResultsCalculating &&
+    Number.isFinite(optimizedAdvancedContribution?.monthlyContribution) &&
+    Number.isFinite(brokerageOnlyMonthlyContributionNeeded);
+  const automaticOptimization =
+    hasAutomaticOptimizedResults &&
+    brokerageOnlyMonthlyContributionNeeded <
+      optimizedAdvancedContribution.monthlyContribution
+      ? "brokerage-only"
+      : hasAutomaticOptimizedResults
+        ? "advanced"
+        : null;
+  const optimizedAdvancedResult = useMemo(() => {
+    if (
+      !deferredGenerationalInputs.showAdvancedInvestment ||
+      !Number.isFinite(optimizedAdvancedContribution?.monthlyContribution)
+    )
+      return result;
+    const inputs = deferredGenerationalInputs;
+    return calculateGenerationalSavingsScenario({
+      children: inputs.children,
+      startingAmount: inputs.startingAmount,
+      monthlyContribution: optimizedAdvancedContribution.monthlyContribution,
+      marketReturn: inputs.marketReturn,
+      inflation: inputs.inflation,
+      carCost: inputs.carCost,
+      annualTuition: inputs.annualTuition,
+      annualBoard: inputs.annualBoard,
+      annualPostgradTuition: inputs.annualPostgradTuition,
+      annualPostgradBoard: inputs.annualPostgradBoard,
+      postgradYears: inputs.postgradYears,
+      downPayment: inputs.downPayment,
+      downPaymentAge: inputs.downPaymentAge,
+      advancedTracking: true,
+      startingAmount529Pct: optimizedAdvancedContribution.startingAmount529Pct,
+      monthlyContribution529Pct:
+        optimizedAdvancedContribution.monthlyContribution529Pct,
+      plan529Return: inputs.plan529Return,
+      currentAge: inputs.advancedCurrentAge,
+      currentSalary: inputs.advancedCurrentSalary,
+      retirementAge: inputs.advancedRetirementAge,
+      retirementSalary: inputs.advancedRetirementSalary,
+    });
+  }, [deferredGenerationalInputs, optimizedAdvancedContribution, result]);
+  const optimizedBrokerageOnlyResult = useMemo(() => {
+    if (
+      !deferredGenerationalInputs.showAdvancedInvestment ||
+      !Number.isFinite(brokerageOnlyMonthlyContributionNeeded)
+    )
+      return brokerageOnlyResult;
+    const inputs = deferredGenerationalInputs;
+    return calculateGenerationalSavingsScenario({
+      children: inputs.children,
+      startingAmount: inputs.startingAmount,
+      monthlyContribution: brokerageOnlyMonthlyContributionNeeded,
+      marketReturn: inputs.marketReturn,
+      inflation: inputs.inflation,
+      carCost: inputs.carCost,
+      annualTuition: inputs.annualTuition,
+      annualBoard: inputs.annualBoard,
+      annualPostgradTuition: inputs.annualPostgradTuition,
+      annualPostgradBoard: inputs.annualPostgradBoard,
+      postgradYears: inputs.postgradYears,
+      downPayment: inputs.downPayment,
+      downPaymentAge: inputs.downPaymentAge,
+      advancedTracking: true,
+      startingAmount529Pct: 0,
+      monthlyContribution529Pct: 0,
+      plan529Return: inputs.marketReturn,
+      currentAge: inputs.advancedCurrentAge,
+      currentSalary: inputs.advancedCurrentSalary,
+      retirementAge: inputs.advancedRetirementAge,
+      retirementSalary: inputs.advancedRetirementSalary,
+    });
   }, [
-    showAdvancedInvestment,
-    children,
-    startingAmount,
-    marketReturn,
-    inflation,
-    carCost,
-    annualTuition,
-    annualBoard,
-    annualPostgradTuition,
-    annualPostgradBoard,
-    postgradYears,
-    downPayment,
-    downPaymentAge,
-    startingAmount529Pct,
-    plan529Return,
-    advancedCurrentAge,
-    advancedCurrentSalary,
-    advancedRetirementAge,
-    advancedRetirementSalary,
+    brokerageOnlyMonthlyContributionNeeded,
+    brokerageOnlyResult,
+    deferredGenerationalInputs,
   ]);
-  const calculateOptimizedAdvancedContribution = () =>
-    optimizedAdvancedContribution ??
-    findGenerationalOptimizedAdvancedContributions({
-      children,
-      startingAmount,
-      marketReturn,
-      inflation,
-      carCost,
-      annualTuition,
-      annualBoard,
-      annualPostgradTuition,
-      annualPostgradBoard,
-      postgradYears,
-      downPayment,
-      downPaymentAge,
-      startingAmount529Pct,
-      plan529Return,
-      currentAge: advancedCurrentAge,
-      currentSalary: advancedCurrentSalary,
-      retirementAge: advancedRetirementAge,
-      retirementSalary: advancedRetirementSalary,
-    });
-  const calculateBrokerageOnlyMonthlyContribution = () =>
-    Number.isFinite(brokerageOnlyMonthlyContributionNeeded)
+  const activeGenerationalResult =
+    showAdvancedInvestment && automaticOptimization === "brokerage-only"
+      ? optimizedBrokerageOnlyResult
+      : showAdvancedInvestment && automaticOptimization === "advanced"
+        ? optimizedAdvancedResult
+        : result;
+  const activeMonthlyContribution =
+    showAdvancedInvestment && automaticOptimization === "brokerage-only"
       ? brokerageOnlyMonthlyContributionNeeded
-      : findGenerationalZeroBalanceContribution({
-          children,
-          startingAmount,
-          marketReturn,
-          inflation,
-          carCost,
-          annualTuition,
-          annualBoard,
-          annualPostgradTuition,
-          annualPostgradBoard,
-          postgradYears,
-          downPayment,
-          downPaymentAge,
-          advancedTracking: true,
-          startingAmount529Pct: 0,
-          monthlyContribution529Pct: 0,
-          plan529Return: marketReturn,
-          currentAge: advancedCurrentAge,
-          currentSalary: advancedCurrentSalary,
-          retirementAge: advancedRetirementAge,
-          retirementSalary: advancedRetirementSalary,
-        });
-  const optimizeAdvancedContributions = () => {
-    if (
-      isOptimizingAdvancedContributions ||
-      isOptimizingBrokerageOnlyContribution
-    )
-      return;
-    setSelectedOptimization("advanced");
-    setIsOptimizingAdvancedContributions(true);
-    window.requestAnimationFrame(() => {
-      window.setTimeout(() => {
-        try {
-          const nextOptimizedAdvancedContribution =
-            calculateOptimizedAdvancedContribution();
-          setOptimizedAdvancedContribution(nextOptimizedAdvancedContribution);
-          setStartingAmount529Pct(
-            Math.round(nextOptimizedAdvancedContribution.startingAmount529Pct),
-          );
-          setMonthlyContribution529Pct(
-            Math.round(
-              nextOptimizedAdvancedContribution.monthlyContribution529Pct,
-            ),
-          );
-          setMonthlyContribution(
-            nextOptimizedAdvancedContribution.monthlyContribution,
-          );
-        } finally {
-          setIsOptimizingAdvancedContributions(false);
-        }
-      }, 0);
-    });
-  };
-  const optimizeBrokerageOnlyContribution = () => {
-    if (
-      isOptimizingBrokerageOnlyContribution ||
-      isOptimizingAdvancedContributions
-    )
-      return;
-    setSelectedOptimization("brokerage-only");
-    setIsOptimizingBrokerageOnlyContribution(true);
-    window.requestAnimationFrame(() => {
-      window.setTimeout(() => {
-        try {
-          const nextBrokerageOnlyMonthlyContribution =
-            calculateBrokerageOnlyMonthlyContribution();
-          setBrokerageOnlyMonthlyContributionNeeded(
-            nextBrokerageOnlyMonthlyContribution,
-          );
-          setMonthlyContribution(nextBrokerageOnlyMonthlyContribution);
-        } finally {
-          setIsOptimizingBrokerageOnlyContribution(false);
-        }
-      }, 0);
-    });
-  };
-  const result = useMemo(
-    () =>
-      calculateGenerationalSavingsScenario({
-        children,
-        startingAmount,
-        monthlyContribution,
-        marketReturn,
-        inflation,
-        carCost,
-        annualTuition,
-        annualBoard,
-        annualPostgradTuition,
-        annualPostgradBoard,
-        postgradYears,
-        downPayment,
-        downPaymentAge,
-        advancedTracking: showAdvancedInvestment,
-        startingAmount529Pct,
-        monthlyContribution529Pct,
-        plan529Return,
-        currentAge: advancedCurrentAge,
-        currentSalary: advancedCurrentSalary,
-        retirementAge: advancedRetirementAge,
-        retirementSalary: advancedRetirementSalary,
-      }),
-    [
-      children,
-      startingAmount,
-      monthlyContribution,
-      marketReturn,
-      inflation,
-      carCost,
-      annualTuition,
-      annualBoard,
-      annualPostgradTuition,
-      annualPostgradBoard,
-      postgradYears,
-      downPayment,
-      downPaymentAge,
-      showAdvancedInvestment,
-      startingAmount529Pct,
-      monthlyContribution529Pct,
-      plan529Return,
-      advancedCurrentAge,
-      advancedCurrentSalary,
-      advancedRetirementAge,
-      advancedRetirementSalary,
-    ],
-  );
-  const brokerageOnlyResult = useMemo(
-    () =>
-      calculateGenerationalSavingsScenario({
-        children,
-        startingAmount,
-        monthlyContribution,
-        marketReturn,
-        inflation,
-        carCost,
-        annualTuition,
-        annualBoard,
-        annualPostgradTuition,
-        annualPostgradBoard,
-        postgradYears,
-        downPayment,
-        downPaymentAge,
-        advancedTracking: true,
-        startingAmount529Pct: 0,
-        monthlyContribution529Pct: 0,
-        plan529Return: marketReturn,
-        currentAge: advancedCurrentAge,
-        currentSalary: advancedCurrentSalary,
-        retirementAge: advancedRetirementAge,
-        retirementSalary: advancedRetirementSalary,
-      }),
-    [
-      children,
-      startingAmount,
-      monthlyContribution,
-      marketReturn,
-      inflation,
-      carCost,
-      annualTuition,
-      annualBoard,
-      annualPostgradTuition,
-      annualPostgradBoard,
-      postgradYears,
-      downPayment,
-      downPaymentAge,
-      advancedCurrentAge,
-      advancedCurrentSalary,
-      advancedRetirementAge,
-      advancedRetirementSalary,
-    ],
-  );
+      : showAdvancedInvestment && automaticOptimization === "advanced"
+        ? optimizedAdvancedContribution?.monthlyContribution
+        : monthlyContribution;
   return (
     <CalculatorFrame
       title="Generational Savings Calculator"
       description={`Model savings accounts for kids' cars at 16, college after senior year, postgraduate degrees after college, and home down payments at age ${downPaymentAge}. Costs are entered in today's dollars and inflated to each milestone.`}
       exportData={{
         columns: GENERATIONAL_SAVINGS_EXPORT_COLUMNS,
-        rows: result.yearlyAccountRows,
+        rows: activeGenerationalResult.yearlyAccountRows,
       }}
     >
       <div className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-5">
+        <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
           <SmallStat
-            label="Ending balance"
-            value={formatCompactMoney(result.endingBalance)}
-            tone={result.shortfall > 0 ? "amber" : "green"}
-          />
-          <SmallStat
-            label="Milestones paid"
-            value={formatCompactMoney(result.totalWithdrawn)}
+            label="Starting Amount per child"
+            value={formatMoney(startingAmount)}
             tone="blue"
           />
           <SmallStat
-            label="Investment growth"
-            value={formatCompactMoney(result.totalInterest)}
-            tone="green"
-          />
-          <SmallStat
-            label="Total invested"
-            value={formatCompactMoney(result.totalContributions)}
+            label="Monthly contribution per child"
+            value={formatMoney(
+              Number.isFinite(activeMonthlyContribution)
+                ? activeMonthlyContribution
+                : monthlyContribution,
+            )}
             tone="teal"
           />
           <SmallStat
+            label="Ending balance"
+            value={formatCompactMoney(activeGenerationalResult.endingBalance)}
+            tone={activeGenerationalResult.shortfall > 0 ? "amber" : "green"}
+          />
+          <SmallStat
+            label="Total invested"
+            value={formatCompactMoney(
+              activeGenerationalResult.totalContributions,
+            )}
+            tone="teal"
+          />
+          <SmallStat
+            label="Investment growth"
+            value={formatCompactMoney(activeGenerationalResult.totalInterest)}
+            tone="green"
+          />
+          <SmallStat
             label="Shortfall"
-            value={formatCompactMoney(result.shortfall)}
-            tone={result.shortfall > 0 ? "red" : "neutral"}
+            value={formatCompactMoney(activeGenerationalResult.shortfall)}
+            tone={activeGenerationalResult.shortfall > 0 ? "red" : "neutral"}
           />
         </div>
         <div className="grid gap-5 lg:grid-cols-[430px_1fr]">
           <Card>
             <SectionTitle
               icon={GiftIcon}
-              title="Children & savings"
+              title="Children Information"
               subtitle="Set age and current grade for milestone timing."
             />
             <div className="space-y-4">
@@ -6889,19 +6695,22 @@ function GenerationalSavingsCalculator() {
             <SectionTitle
               icon={BarChartIcon}
               title="Generational savings path"
-              subtitle={`Combined balances across ${childCount} ${childCount === 1 ? "child" : "children"} over ${result.horizonYears} years.`}
+              subtitle={`Combined balances across ${childCount} ${childCount === 1 ? "child" : "children"} over ${activeGenerationalResult.horizonYears} years.`}
             />
             <div className="h-[420px] flex-1">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
-                  data={result.rows}
+                  data={activeGenerationalResult.rows}
                   margin={{ top: 10, right: 20, left: 0, bottom: 16 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="year"
                     type="number"
-                    domain={[0, Math.ceil(result.horizonYears)]}
+                    domain={[
+                      0,
+                      Math.ceil(activeGenerationalResult.horizonYears),
+                    ]}
                     allowDecimals={false}
                     tick={CHART_AXIS_TICK}
                     tickLine={false}
@@ -6952,7 +6761,7 @@ function GenerationalSavingsCalculator() {
                     dot={false}
                     strokeOpacity={0.6}
                   />
-                  {result.shortfall > 0 && (
+                  {activeGenerationalResult.shortfall > 0 && (
                     <Line
                       type="monotone"
                       dataKey="shortfall"
@@ -6969,45 +6778,6 @@ function GenerationalSavingsCalculator() {
           </Card>
         </div>
         <div className="grid gap-5">
-          <Card>
-            <SectionTitle
-              icon={TrendingUpIcon}
-              title="Investment assumptions"
-            />
-            <div className="grid gap-4 md:grid-cols-2">
-              <MoneyInput
-                label="Starting amount per child"
-                value={startingAmount}
-                onChange={setStartingAmount}
-                max={250000}
-                step={1000}
-              />
-              <MoneyInput
-                label="Monthly contribution per child"
-                value={monthlyContribution}
-                onChange={setMonthlyContribution}
-                max={15000}
-                step={100}
-                displayValue={numberFormatter.format(
-                  Math.round(monthlyContribution),
-                )}
-                helperText={`Yearly contribution: ${formatMoney(monthlyContribution * 12)}`}
-              />
-              <div className="md:col-span-2">
-                <MarketReturnPicker
-                  value={marketReturn}
-                  onChange={setMarketReturn}
-                />
-              </div>
-              <button
-                type="button"
-                onClick={setZeroEndingContribution}
-                className="w-full rounded-xl border border-neutral-950 bg-neutral-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-neutral-800 md:col-span-2"
-              >
-                End account with $0
-              </button>
-            </div>
-          </Card>
           <div className="grid gap-5 lg:grid-cols-2">
             <Card>
               <SectionTitle
@@ -7128,95 +6898,121 @@ function GenerationalSavingsCalculator() {
               </div>
             </Card>
           </div>
-        </div>
-        <Card>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
+          <Card>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <SectionTitle
-                icon={BarChartIcon}
-                title="Advanced tracking"
-                subtitle="A more realistic 529 and brokerage system with a rough tax model for brokerage withdrawal."
+                icon={showAdvancedInvestment ? BarChartIcon : TrendingUpIcon}
+                title={
+                  showAdvancedInvestment
+                    ? "Advanced tracking"
+                    : "Simple Investment Assumptions"
+                }
+                subtitle={
+                  showAdvancedInvestment
+                    ? "A more realistic 529 and brokerage system with a rough tax model for brokerage withdrawal."
+                    : "Use one starting amount, one monthly contribution, and one market return."
+                }
               />
-              <p className="-mt-2 text-sm leading-6 text-neutral-600">
-                Let's figure out if a 529+brokerage account or just a brokerage
-                account will work best for your needs.
-                <span className="mt-2 block">
-                  <strong className="font-bold text-neutral-700">
-                    Step 1:
-                  </strong>{" "}
-                  Enter information into both sections below.
+              <div className="flex shrink-0 items-center gap-3">
+                {showAdvancedInvestment && (
+                  <span className="rounded-full bg-fuchsia-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                    Beta
+                  </span>
+                )}
+                <span className="text-sm font-semibold text-neutral-700">
+                  Advanced mode
                 </span>
-              </p>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={showAdvancedInvestment}
+                  onClick={() => setShowAdvancedInvestment((value) => !value)}
+                  className={`flex h-8 w-14 items-center rounded-full p-1 transition ${showAdvancedInvestment ? "bg-neutral-950" : "bg-neutral-300"}`}
+                >
+                  <span className="sr-only">Advanced tracking</span>
+                  <span
+                    className={`h-6 w-6 rounded-full bg-white shadow-sm transition ${showAdvancedInvestment ? "translate-x-6" : "translate-x-0"}`}
+                  />
+                </button>
+              </div>
             </div>
-            <div className="flex shrink-0 items-center gap-3">
-              <span className="rounded-full bg-fuchsia-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                Beta
-              </span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={showAdvancedInvestment}
-                onClick={() => setShowAdvancedInvestment((value) => !value)}
-                className={`flex h-8 w-14 items-center rounded-full p-1 transition ${showAdvancedInvestment ? "bg-neutral-950" : "bg-neutral-300"}`}
-              >
-                <span className="sr-only">Advanced tracking</span>
-                <span
-                  className={`h-6 w-6 rounded-full bg-white shadow-sm transition ${showAdvancedInvestment ? "translate-x-6" : "translate-x-0"}`}
+            {showAdvancedInvestment ? (
+              <>
+                <p className="mt-2 text-sm leading-6 text-neutral-600">
+                  Let's figure out if a 529+brokerage account or just a
+                  brokerage account will work best for your needs.
+                </p>
+                <AdvancedGenerationalTrackingPanel
+                  result={optimizedAdvancedResult}
+                  brokerageOnlyResult={optimizedBrokerageOnlyResult}
+                  startingAmount={startingAmount}
+                  setStartingAmount={setStartingAmount}
+                  marketReturn={marketReturn}
+                  setMarketReturn={setMarketReturn}
+                  advancedMonthlyContributionNeeded={
+                    optimizedAdvancedContribution?.monthlyContribution
+                  }
+                  advancedStartingAmount529Pct={
+                    optimizedAdvancedContribution?.startingAmount529Pct
+                  }
+                  advancedMonthlyContribution529Pct={
+                    optimizedAdvancedContribution?.monthlyContribution529Pct
+                  }
+                  brokerageOnlyMonthlyContributionNeeded={
+                    brokerageOnlyMonthlyContributionNeeded
+                  }
+                  plan529Return={plan529Return}
+                  setPlan529Return={setPlan529Return}
+                  currentAge={advancedCurrentAge}
+                  setCurrentAge={setSafeAdvancedCurrentAge}
+                  currentSalary={advancedCurrentSalary}
+                  setCurrentSalary={setAdvancedCurrentSalary}
+                  retirementAge={advancedRetirementAge}
+                  setRetirementAge={setSafeAdvancedRetirementAge}
+                  retirementSalary={advancedRetirementSalary}
+                  setRetirementSalary={setAdvancedRetirementSalary}
+                  areContributionResultsCalculating={
+                    areContributionResultsCalculating
+                  }
                 />
-              </button>
-            </div>
-          </div>
-          {showAdvancedInvestment && (
-            <AdvancedGenerationalTrackingPanel
-              result={result}
-              brokerageOnlyResult={brokerageOnlyResult}
-              startingAmount={startingAmount}
-              monthlyContribution={monthlyContribution}
-              marketReturn={marketReturn}
-              setMarketReturn={setMarketReturn}
-              advancedMonthlyContributionNeeded={
-                optimizedAdvancedContribution?.monthlyContribution
-              }
-              advancedStartingAmount529Pct={
-                optimizedAdvancedContribution?.startingAmount529Pct
-              }
-              advancedMonthlyContribution529Pct={
-                optimizedAdvancedContribution?.monthlyContribution529Pct
-              }
-              brokerageOnlyMonthlyContributionNeeded={
-                brokerageOnlyMonthlyContributionNeeded
-              }
-              selectedOptimization={selectedOptimization}
-              startingAmount529Pct={startingAmount529Pct}
-              monthlyContribution529Pct={monthlyContribution529Pct}
-              plan529Return={plan529Return}
-              setPlan529Return={setPlan529Return}
-              setStartingAmount529Pct={setStartingAmount529Pct}
-              setMonthlyContribution529Pct={setMonthlyContribution529Pct}
-              currentAge={advancedCurrentAge}
-              setCurrentAge={setSafeAdvancedCurrentAge}
-              currentSalary={advancedCurrentSalary}
-              setCurrentSalary={setAdvancedCurrentSalary}
-              retirementAge={advancedRetirementAge}
-              setRetirementAge={setSafeAdvancedRetirementAge}
-              retirementSalary={advancedRetirementSalary}
-              setRetirementSalary={setAdvancedRetirementSalary}
-              optimizeAdvancedContributions={optimizeAdvancedContributions}
-              isOptimizingAdvancedContributions={
-                isOptimizingAdvancedContributions
-              }
-              optimizeBrokerageOnlyContribution={
-                optimizeBrokerageOnlyContribution
-              }
-              isOptimizingBrokerageOnlyContribution={
-                isOptimizingBrokerageOnlyContribution
-              }
-              areContributionResultsCalculating={
-                areContributionResultsCalculating
-              }
-            />
-          )}
-        </Card>
+              </>
+            ) : (
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <MoneyInput
+                  label="Starting amount per child"
+                  value={startingAmount}
+                  onChange={setStartingAmount}
+                  max={250000}
+                  step={1000}
+                />
+                <MoneyInput
+                  label="Monthly contribution per child"
+                  value={monthlyContribution}
+                  onChange={setMonthlyContribution}
+                  max={15000}
+                  step={100}
+                  displayValue={numberFormatter.format(
+                    Math.round(monthlyContribution),
+                  )}
+                  helperText={`Yearly contribution: ${formatMoney(monthlyContribution * 12)}`}
+                />
+                <div className="md:col-span-2">
+                  <MarketReturnPicker
+                    value={marketReturn}
+                    onChange={setMarketReturn}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={setZeroEndingContribution}
+                  className="w-full rounded-xl border border-neutral-950 bg-neutral-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-neutral-800 md:col-span-2"
+                >
+                  End account with $0
+                </button>
+              </div>
+            )}
+          </Card>
+        </div>
         <Card>
           <SectionTitle
             icon={BarChartIcon}
@@ -7226,14 +7022,14 @@ function GenerationalSavingsCalculator() {
           <div className="h-[420px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
-                data={result.rows}
+                data={activeGenerationalResult.rows}
                 margin={{ top: 10, right: 20, left: 0, bottom: 16 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis
                   dataKey="year"
                   type="number"
-                  domain={[0, Math.ceil(result.horizonYears)]}
+                  domain={[0, Math.ceil(activeGenerationalResult.horizonYears)]}
                   allowDecimals={false}
                   tick={CHART_AXIS_TICK}
                   tickLine={false}
@@ -7258,7 +7054,7 @@ function GenerationalSavingsCalculator() {
                   verticalAlign="bottom"
                   wrapperStyle={CHART_BOTTOM_LEGEND_WRAPPER_STYLE}
                 />
-                {result.accounts.map((account, index) => (
+                {activeGenerationalResult.accounts.map((account, index) => (
                   <Line
                     key={account.name}
                     type="monotone"
@@ -7269,7 +7065,7 @@ function GenerationalSavingsCalculator() {
                     dot={false}
                   />
                 ))}
-                {result.accounts.map((account, index) => (
+                {activeGenerationalResult.accounts.map((account, index) => (
                   <Line
                     key={`${account.name}-milestone-cost`}
                     type="stepAfter"
@@ -7292,7 +7088,7 @@ function GenerationalSavingsCalculator() {
             subtitle="Balances, contributions, earnings, withdrawals, and milestone coverage by child."
           />
           <div className="grid gap-3 md:grid-cols-2">
-            {result.accounts.map((account) => (
+            {activeGenerationalResult.accounts.map((account) => (
               <div
                 key={account.name}
                 className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4"
@@ -7380,7 +7176,7 @@ function GenerationalSavingsCalculator() {
                 </tr>
               </thead>
               <tbody>
-                {result.yearlyAccountRows.map((row) => (
+                {activeGenerationalResult.yearlyAccountRows.map((row) => (
                   <tr key={`${row.year}-${row.child}`}>
                     <td className="border-b border-neutral-100 px-3 py-2 font-semibold">
                       {row.year}
