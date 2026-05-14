@@ -5549,7 +5549,6 @@ function findGenerationalOptimizedAdvancedContributions({
   postgradYears,
   downPayment,
   downPaymentAge,
-  startingAmount529Pct,
   plan529Return,
   currentAge,
   currentSalary,
@@ -5682,12 +5681,7 @@ function findGenerationalOptimizedAdvancedContributions({
         score,
       };
   };
-  const maxStartingAmount529Pct = clampNumber(startingAmount529Pct, 0, 100);
-  for (
-    let startingPct = 0;
-    startingPct <= maxStartingAmount529Pct + 0.0001;
-    startingPct += 10
-  ) {
+  for (let startingPct = 0; startingPct <= 100; startingPct += 10) {
     for (let monthlyPct = 0; monthlyPct <= 100; monthlyPct += 10)
       consider(startingPct, monthlyPct);
   }
@@ -6252,16 +6246,6 @@ function GenerationalSavingsCalculator() {
   );
   const [showAdvancedInvestment, setShowAdvancedInvestment] =
     useCalculatorState("generational-savings", "showAdvancedInvestment", false);
-  const [startingAmount529Pct] = useCalculatorState(
-    "generational-savings",
-    "startingAmount529Pct",
-    100,
-  );
-  const [monthlyContribution529Pct] = useCalculatorState(
-    "generational-savings",
-    "monthlyContribution529Pct",
-    100,
-  );
   const [plan529Return, setPlan529Return] = useCalculatorState(
     "generational-savings",
     "plan529Return",
@@ -6314,8 +6298,6 @@ function GenerationalSavingsCalculator() {
       downPayment,
       downPaymentAge,
       showAdvancedInvestment,
-      startingAmount529Pct,
-      monthlyContribution529Pct,
       plan529Return,
       advancedCurrentAge,
       advancedCurrentSalary,
@@ -6337,8 +6319,6 @@ function GenerationalSavingsCalculator() {
       downPayment,
       downPaymentAge,
       showAdvancedInvestment,
-      startingAmount529Pct,
-      monthlyContribution529Pct,
       plan529Return,
       advancedCurrentAge,
       advancedCurrentSalary,
@@ -6383,8 +6363,8 @@ function GenerationalSavingsCalculator() {
         downPayment,
         downPaymentAge,
         advancedTracking: showAdvancedInvestment,
-        startingAmount529Pct,
-        monthlyContribution529Pct,
+        startingAmount529Pct: 100,
+        monthlyContribution529Pct: 100,
         plan529Return,
         currentAge: advancedCurrentAge,
         currentSalary: advancedCurrentSalary,
@@ -6412,7 +6392,6 @@ function GenerationalSavingsCalculator() {
           postgradYears: deferredGenerationalInputs.postgradYears,
           downPayment: deferredGenerationalInputs.downPayment,
           downPaymentAge: deferredGenerationalInputs.downPaymentAge,
-          startingAmount529Pct: deferredGenerationalInputs.startingAmount529Pct,
           plan529Return: deferredGenerationalInputs.plan529Return,
           currentAge: deferredGenerationalInputs.advancedCurrentAge,
           currentSalary: deferredGenerationalInputs.advancedCurrentSalary,
@@ -6472,8 +6451,8 @@ function GenerationalSavingsCalculator() {
       downPayment: inputs.downPayment,
       downPaymentAge: inputs.downPaymentAge,
       advancedTracking: inputs.showAdvancedInvestment,
-      startingAmount529Pct: inputs.startingAmount529Pct,
-      monthlyContribution529Pct: inputs.monthlyContribution529Pct,
+      startingAmount529Pct: 100,
+      monthlyContribution529Pct: 100,
       plan529Return: inputs.plan529Return,
       currentAge: inputs.advancedCurrentAge,
       currentSalary: inputs.advancedCurrentSalary,
