@@ -9834,17 +9834,6 @@ const calculators = [
     component: GenerationalSavingsCalculator,
   },
   {
-    id: "medical-costs",
-    name: "Medical Costs Calculator",
-    subtitle: "Self fund care through investment or pay into insurance?",
-    shortName: "Medical",
-    description:
-      "Compare a yearly invested amount with age-based medical cash costs later in life.",
-    icon: MedicalIcon,
-    component: MedicalCostsCalculator,
-    beta: true,
-  },
-  {
     id: "genwiz",
     name: "GenWiz",
     subtitle: "Guided family savings planning",
@@ -9853,6 +9842,17 @@ const calculators = [
       "Walk through the generational savings assumptions one question at a time in a conversational flow.",
     icon: GiftIcon,
     component: GenWizCalculator,
+    beta: true,
+  },
+  {
+    id: "medical-costs",
+    name: "Medical Costs Calculator",
+    subtitle: "Self fund care through investment or pay into insurance?",
+    shortName: "Medical",
+    description:
+      "Compare a yearly invested amount with age-based medical cash costs later in life.",
+    icon: MedicalIcon,
+    component: MedicalCostsCalculator,
     beta: true,
   },
 ];
