@@ -63,6 +63,11 @@ export default function Page() {
               name: "Generational Savings Calculator",
               applicationCategory: "FinanceApplication",
             },
+            {
+              "@type": "WebApplication",
+              name: "GenWiz",
+              applicationCategory: "FinanceApplication",
+            },
           ],
         }}
       />

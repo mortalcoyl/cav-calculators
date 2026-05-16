@@ -5102,21 +5102,28 @@ function calculateGenerationalSavingsScenario({
     const postgradStartMonth = collegeStartMonth + 48;
     const homeMonth = Math.max(0, (downPaymentAge - child.age) * 12);
     const educationEvents = [
-      ...[0, 12, 24, 36].map((offset) => ({
+      ...[0, 12, 24, 36].map((offset, year) => ({
         key: "College",
+        label: `College: Year ${year + 1}`,
         month: collegeStartMonth + offset,
         cost: annualTuition + annualBoard,
       })),
       ...Array.from({ length: postgradYears }, (_, year) => ({
         key: "Postgrad",
+        label: `Postgrad: Year ${year + 1}`,
         month: postgradStartMonth + year * 12,
         cost: annualPostgradTuition + annualPostgradBoard,
       })),
     ];
     const events = [
-      { key: "Car", month: carMonth, cost: carCost },
+      { key: "Car", label: "Car", month: carMonth, cost: carCost },
       ...educationEvents,
-      { key: "Down Payment", month: homeMonth, cost: downPayment },
+      {
+        key: "Down Payment",
+        label: "Home down payment",
+        month: homeMonth,
+        cost: downPayment,
+      },
     ];
     return {
       ...child,
@@ -5268,7 +5275,7 @@ function calculateGenerationalSavingsScenario({
           milestoneCosts[account.name] =
             (milestoneCosts[account.name] || 0) + inflatedCost;
           milestoneDetails.push({
-            label: `${account.name} ${event.key}`,
+            label: `${account.name} ${event.label || event.key}`,
             cost: inflatedCost,
           });
           yearlyAccounts[accountIndex].milestoneExpenses += inflatedCost;
@@ -7189,6 +7196,924 @@ function GenerationalSavingsCalculator() {
   );
 }
 
+function GenWizStep({ children, isActive, stepNumber, title, prompt }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.28 }}
+    >
+      <Card
+        className={
+          isActive ? "border-neutral-300 shadow-md" : "border-neutral-200"
+        }
+      >
+        <div className="mb-4">
+          <div className="text-xs font-bold uppercase tracking-wide text-neutral-400">
+            Step {stepNumber}
+          </div>
+          <h3 className="mt-1 text-lg font-semibold tracking-tight text-neutral-950">
+            {title}
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-neutral-600">{prompt}</p>
+        </div>
+        {children}
+      </Card>
+    </motion.div>
+  );
+}
+
+function GenWizNavigation({ activeStep, totalSteps, onBack }) {
+  const isIntro = activeStep === 0;
+  return (
+    <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <div className="text-xs font-bold uppercase tracking-wide text-neutral-400">
+          {isIntro ? "Intro" : `Step ${activeStep} of ${totalSteps}`}
+        </div>
+        <div className="mt-2 h-2 w-full min-w-[220px] overflow-hidden rounded-full bg-neutral-100 sm:w-72">
+          <div
+            className="h-full rounded-full bg-neutral-950 transition-all"
+            style={{
+              width: `${isIntro ? 0 : (activeStep / totalSteps) * 100}%`,
+            }}
+          />
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onBack}
+        disabled={activeStep === 0}
+        className="rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm font-bold text-neutral-800 transition hover:border-neutral-400 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Back
+      </button>
+    </div>
+  );
+}
+
+function GenWizCalculator() {
+  const [activeStep, setActiveStep] = useState(0);
+  const [childCount, setChildCount] = useCalculatorState(
+    "genwiz",
+    "childCount",
+    2,
+  );
+  const [children, setChildren] = useCalculatorState("genwiz", "children", () =>
+    makeGenerationalChildren(2),
+  );
+  const [startingAmount, setStartingAmount] = useCalculatorState(
+    "genwiz",
+    "startingAmount",
+    10000,
+  );
+  const [monthlyContribution] = useCalculatorState(
+    "genwiz",
+    "monthlyContribution",
+    1000,
+  );
+  const [marketReturn, setMarketReturn] = useCalculatorState(
+    "genwiz",
+    "marketReturn",
+    10,
+  );
+  const [inflation, setInflation] = useCalculatorState(
+    "genwiz",
+    "inflation",
+    3,
+  );
+  const [carCost, setCarCost] = useCalculatorState("genwiz", "carCost", 30000);
+  const [annualTuition, setAnnualTuition] = useCalculatorState(
+    "genwiz",
+    "annualTuition",
+    35000,
+  );
+  const [annualBoard, setAnnualBoard] = useCalculatorState(
+    "genwiz",
+    "annualBoard",
+    18000,
+  );
+  const [annualPostgradTuition, setAnnualPostgradTuition] = useCalculatorState(
+    "genwiz",
+    "annualPostgradTuition",
+    60000,
+  );
+  const [annualPostgradBoard, setAnnualPostgradBoard] = useCalculatorState(
+    "genwiz",
+    "annualPostgradBoard",
+    24000,
+  );
+  const [postgradYears, setPostgradYears] = useCalculatorState(
+    "genwiz",
+    "postgradYears",
+    2,
+  );
+  const [downPayment, setDownPayment] = useCalculatorState(
+    "genwiz",
+    "downPayment",
+    150000,
+  );
+  const [downPaymentAge, setDownPaymentAge] = useCalculatorState(
+    "genwiz",
+    "downPaymentAge",
+    25,
+  );
+  const [plan529Return, setPlan529Return] = useCalculatorState(
+    "genwiz",
+    "plan529Return",
+    7,
+  );
+  const [advancedCurrentAge, setAdvancedCurrentAge] = useCalculatorState(
+    "genwiz",
+    "advancedCurrentAge",
+    40,
+  );
+  const [advancedCurrentSalary, setAdvancedCurrentSalary] = useCalculatorState(
+    "genwiz",
+    "advancedCurrentSalary",
+    120000,
+  );
+  const [advancedRetirementAge, setAdvancedRetirementAge] = useCalculatorState(
+    "genwiz",
+    "advancedRetirementAge",
+    65,
+  );
+  const [advancedRetirementSalary, setAdvancedRetirementSalary] =
+    useCalculatorState("genwiz", "advancedRetirementSalary", 80000);
+  const [optimizedAdvancedContribution, setOptimizedAdvancedContribution] =
+    useState(null);
+  const [
+    brokerageOnlyMonthlyContributionNeeded,
+    setBrokerageOnlyMonthlyContributionNeeded,
+  ] = useState(null);
+  const [
+    areContributionResultsCalculating,
+    setAreContributionResultsCalculating,
+  ] = useState(false);
+  const maxStep = 9;
+  const goToStep = (step) => setActiveStep(clampNumber(step, 0, maxStep));
+  const goBack = () => goToStep(activeStep - 1);
+  const setSafeChildCount = (nextCount) => {
+    const count = clampNumber(parseNumber(nextCount), 1, 6);
+    setChildCount(count);
+    setChildren((current) => makeGenerationalChildren(count, current));
+  };
+  const updateChild = (index, updates) =>
+    setChildren((current) =>
+      current.map((child, childIndex) =>
+        childIndex === index ? { ...child, ...updates } : child,
+      ),
+    );
+  const setSafeAdvancedCurrentAge = (value) => {
+    const age = clampNumber(parseNumber(value), 18, 90);
+    setAdvancedCurrentAge(age);
+    if (advancedRetirementAge < age) setAdvancedRetirementAge(age);
+  };
+  const setSafeAdvancedRetirementAge = (value) =>
+    setAdvancedRetirementAge(
+      clampNumber(parseNumber(value), advancedCurrentAge, 95),
+    );
+  const genWizInputs = useMemo(
+    () => ({
+      children,
+      startingAmount,
+      monthlyContribution,
+      marketReturn,
+      inflation,
+      carCost,
+      annualTuition,
+      annualBoard,
+      annualPostgradTuition,
+      annualPostgradBoard,
+      postgradYears,
+      downPayment,
+      downPaymentAge,
+      plan529Return,
+      advancedCurrentAge,
+      advancedCurrentSalary,
+      advancedRetirementAge,
+      advancedRetirementSalary,
+    }),
+    [
+      children,
+      startingAmount,
+      monthlyContribution,
+      marketReturn,
+      inflation,
+      carCost,
+      annualTuition,
+      annualBoard,
+      annualPostgradTuition,
+      annualPostgradBoard,
+      postgradYears,
+      downPayment,
+      downPaymentAge,
+      plan529Return,
+      advancedCurrentAge,
+      advancedCurrentSalary,
+      advancedRetirementAge,
+      advancedRetirementSalary,
+    ],
+  );
+  const deferredGenWizInputs = useDeferredValue(genWizInputs);
+  useEffect(() => {
+    if (activeStep < 6) return undefined;
+    let isCancelled = false;
+    setAreContributionResultsCalculating(true);
+    const timeout = window.setTimeout(() => {
+      const nextOptimizedAdvancedContribution =
+        findGenerationalOptimizedAdvancedContributions({
+          children: deferredGenWizInputs.children,
+          startingAmount: deferredGenWizInputs.startingAmount,
+          marketReturn: deferredGenWizInputs.marketReturn,
+          inflation: deferredGenWizInputs.inflation,
+          carCost: deferredGenWizInputs.carCost,
+          annualTuition: deferredGenWizInputs.annualTuition,
+          annualBoard: deferredGenWizInputs.annualBoard,
+          annualPostgradTuition: deferredGenWizInputs.annualPostgradTuition,
+          annualPostgradBoard: deferredGenWizInputs.annualPostgradBoard,
+          postgradYears: deferredGenWizInputs.postgradYears,
+          downPayment: deferredGenWizInputs.downPayment,
+          downPaymentAge: deferredGenWizInputs.downPaymentAge,
+          plan529Return: deferredGenWizInputs.plan529Return,
+          currentAge: deferredGenWizInputs.advancedCurrentAge,
+          currentSalary: deferredGenWizInputs.advancedCurrentSalary,
+          retirementAge: deferredGenWizInputs.advancedRetirementAge,
+          retirementSalary: deferredGenWizInputs.advancedRetirementSalary,
+        });
+      const nextBrokerageOnlyMonthlyContribution =
+        findGenerationalZeroBalanceContribution({
+          children: deferredGenWizInputs.children,
+          startingAmount: deferredGenWizInputs.startingAmount,
+          marketReturn: deferredGenWizInputs.marketReturn,
+          inflation: deferredGenWizInputs.inflation,
+          carCost: deferredGenWizInputs.carCost,
+          annualTuition: deferredGenWizInputs.annualTuition,
+          annualBoard: deferredGenWizInputs.annualBoard,
+          annualPostgradTuition: deferredGenWizInputs.annualPostgradTuition,
+          annualPostgradBoard: deferredGenWizInputs.annualPostgradBoard,
+          postgradYears: deferredGenWizInputs.postgradYears,
+          downPayment: deferredGenWizInputs.downPayment,
+          downPaymentAge: deferredGenWizInputs.downPaymentAge,
+          advancedTracking: true,
+          startingAmount529Pct: 0,
+          monthlyContribution529Pct: 0,
+          plan529Return: deferredGenWizInputs.marketReturn,
+          currentAge: deferredGenWizInputs.advancedCurrentAge,
+          currentSalary: deferredGenWizInputs.advancedCurrentSalary,
+          retirementAge: deferredGenWizInputs.advancedRetirementAge,
+          retirementSalary: deferredGenWizInputs.advancedRetirementSalary,
+        });
+      if (isCancelled) return;
+      setOptimizedAdvancedContribution(nextOptimizedAdvancedContribution);
+      setBrokerageOnlyMonthlyContributionNeeded(
+        nextBrokerageOnlyMonthlyContribution,
+      );
+      setAreContributionResultsCalculating(false);
+    }, 500);
+    return () => {
+      isCancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [activeStep, deferredGenWizInputs]);
+  const result = useMemo(() => {
+    const inputs = deferredGenWizInputs;
+    return calculateGenerationalSavingsScenario({
+      children: inputs.children,
+      startingAmount: inputs.startingAmount,
+      monthlyContribution: inputs.monthlyContribution,
+      marketReturn: inputs.marketReturn,
+      inflation: inputs.inflation,
+      carCost: inputs.carCost,
+      annualTuition: inputs.annualTuition,
+      annualBoard: inputs.annualBoard,
+      annualPostgradTuition: inputs.annualPostgradTuition,
+      annualPostgradBoard: inputs.annualPostgradBoard,
+      postgradYears: inputs.postgradYears,
+      downPayment: inputs.downPayment,
+      downPaymentAge: inputs.downPaymentAge,
+    });
+  }, [deferredGenWizInputs]);
+  const brokerageOnlyResult = useMemo(() => {
+    const inputs = deferredGenWizInputs;
+    return calculateGenerationalSavingsScenario({
+      children: inputs.children,
+      startingAmount: inputs.startingAmount,
+      monthlyContribution: inputs.monthlyContribution,
+      marketReturn: inputs.marketReturn,
+      inflation: inputs.inflation,
+      carCost: inputs.carCost,
+      annualTuition: inputs.annualTuition,
+      annualBoard: inputs.annualBoard,
+      annualPostgradTuition: inputs.annualPostgradTuition,
+      annualPostgradBoard: inputs.annualPostgradBoard,
+      postgradYears: inputs.postgradYears,
+      downPayment: inputs.downPayment,
+      downPaymentAge: inputs.downPaymentAge,
+      advancedTracking: true,
+      startingAmount529Pct: 0,
+      monthlyContribution529Pct: 0,
+      plan529Return: inputs.marketReturn,
+      currentAge: inputs.advancedCurrentAge,
+      currentSalary: inputs.advancedCurrentSalary,
+      retirementAge: inputs.advancedRetirementAge,
+      retirementSalary: inputs.advancedRetirementSalary,
+    });
+  }, [deferredGenWizInputs]);
+  const optimizedAdvancedResult = useMemo(() => {
+    if (!Number.isFinite(optimizedAdvancedContribution?.monthlyContribution))
+      return result;
+    const inputs = deferredGenWizInputs;
+    return calculateGenerationalSavingsScenario({
+      children: inputs.children,
+      startingAmount: inputs.startingAmount,
+      monthlyContribution: optimizedAdvancedContribution.monthlyContribution,
+      marketReturn: inputs.marketReturn,
+      inflation: inputs.inflation,
+      carCost: inputs.carCost,
+      annualTuition: inputs.annualTuition,
+      annualBoard: inputs.annualBoard,
+      annualPostgradTuition: inputs.annualPostgradTuition,
+      annualPostgradBoard: inputs.annualPostgradBoard,
+      postgradYears: inputs.postgradYears,
+      downPayment: inputs.downPayment,
+      downPaymentAge: inputs.downPaymentAge,
+      advancedTracking: true,
+      startingAmount529Pct: optimizedAdvancedContribution.startingAmount529Pct,
+      monthlyContribution529Pct:
+        optimizedAdvancedContribution.monthlyContribution529Pct,
+      plan529Return: inputs.plan529Return,
+      currentAge: inputs.advancedCurrentAge,
+      currentSalary: inputs.advancedCurrentSalary,
+      retirementAge: inputs.advancedRetirementAge,
+      retirementSalary: inputs.advancedRetirementSalary,
+    });
+  }, [deferredGenWizInputs, optimizedAdvancedContribution, result]);
+  const optimizedBrokerageOnlyResult = useMemo(() => {
+    if (!Number.isFinite(brokerageOnlyMonthlyContributionNeeded))
+      return brokerageOnlyResult;
+    const inputs = deferredGenWizInputs;
+    return calculateGenerationalSavingsScenario({
+      children: inputs.children,
+      startingAmount: inputs.startingAmount,
+      monthlyContribution: brokerageOnlyMonthlyContributionNeeded,
+      marketReturn: inputs.marketReturn,
+      inflation: inputs.inflation,
+      carCost: inputs.carCost,
+      annualTuition: inputs.annualTuition,
+      annualBoard: inputs.annualBoard,
+      annualPostgradTuition: inputs.annualPostgradTuition,
+      annualPostgradBoard: inputs.annualPostgradBoard,
+      postgradYears: inputs.postgradYears,
+      downPayment: inputs.downPayment,
+      downPaymentAge: inputs.downPaymentAge,
+      advancedTracking: true,
+      startingAmount529Pct: 0,
+      monthlyContribution529Pct: 0,
+      plan529Return: inputs.marketReturn,
+      currentAge: inputs.advancedCurrentAge,
+      currentSalary: inputs.advancedCurrentSalary,
+      retirementAge: inputs.advancedRetirementAge,
+      retirementSalary: inputs.advancedRetirementSalary,
+    });
+  }, [
+    brokerageOnlyMonthlyContributionNeeded,
+    brokerageOnlyResult,
+    deferredGenWizInputs,
+  ]);
+  const hasAutomaticOptimizedResults =
+    !areContributionResultsCalculating &&
+    Number.isFinite(optimizedAdvancedContribution?.monthlyContribution) &&
+    Number.isFinite(brokerageOnlyMonthlyContributionNeeded);
+  const automaticOptimization =
+    hasAutomaticOptimizedResults &&
+    brokerageOnlyMonthlyContributionNeeded <
+      optimizedAdvancedContribution.monthlyContribution
+      ? "brokerage-only"
+      : hasAutomaticOptimizedResults
+        ? "advanced"
+        : null;
+  const activeAdvancedResult =
+    automaticOptimization === "brokerage-only"
+      ? optimizedBrokerageOnlyResult
+      : automaticOptimization === "advanced"
+        ? optimizedAdvancedResult
+        : result;
+  const currentCapitalGainsBracket = getCapitalGainsTaxBracket2025(
+    advancedCurrentSalary,
+  );
+  const retirementCapitalGainsBracket = getCapitalGainsTaxBracket2025(
+    advancedRetirementSalary,
+  );
+  const renderAdvancedResultCards = () => (
+    <div className="grid gap-5 lg:grid-cols-2">
+      <div
+        className={`rounded-xl border p-4 ${
+          hasAutomaticOptimizedResults &&
+          optimizedAdvancedContribution.monthlyContribution <
+            brokerageOnlyMonthlyContributionNeeded
+            ? "border-emerald-200 bg-emerald-50"
+            : "border-neutral-200 bg-neutral-50"
+        }`}
+      >
+        <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+          Monthly contribution per child needed for 529+Brokerage
+        </div>
+        <div className="mt-2 text-2xl font-bold text-neutral-950">
+          {areContributionResultsCalculating ||
+          !Number.isFinite(optimizedAdvancedContribution?.monthlyContribution)
+            ? "Calculating..."
+            : formatMoney(optimizedAdvancedContribution.monthlyContribution)}
+        </div>
+      </div>
+      <div
+        className={`rounded-xl border p-4 ${
+          hasAutomaticOptimizedResults &&
+          brokerageOnlyMonthlyContributionNeeded <
+            optimizedAdvancedContribution.monthlyContribution
+            ? "border-emerald-200 bg-emerald-50"
+            : "border-neutral-200 bg-neutral-50"
+        }`}
+      >
+        <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+          Monthly contribution per child needed for Brokerage Only
+        </div>
+        <div className="mt-2 text-2xl font-bold text-neutral-950">
+          {areContributionResultsCalculating ||
+          !Number.isFinite(brokerageOnlyMonthlyContributionNeeded)
+            ? "Calculating..."
+            : formatMoney(brokerageOnlyMonthlyContributionNeeded)}
+        </div>
+      </div>
+    </div>
+  );
+  const renderAdvancedComparisonChart = () => (
+    <div className="mt-5 h-[420px] rounded-xl border border-neutral-200 bg-white p-3">
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart
+          data={activeAdvancedResult.rows}
+          margin={{ top: 10, right: 20, left: 0, bottom: 16 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis
+            dataKey="year"
+            type="number"
+            domain={[0, Math.ceil(activeAdvancedResult.horizonYears)]}
+            allowDecimals={false}
+            tick={CHART_AXIS_TICK}
+            tickLine={false}
+            axisLine={false}
+            height={56}
+            label={{
+              ...CHART_AXIS_LABEL,
+              value: "Years from today",
+              position: "insideBottom",
+              offset: 10,
+            }}
+          />
+          <YAxis
+            tick={CHART_AXIS_TICK}
+            tickFormatter={formatCompactMoney}
+            tickLine={false}
+            axisLine={false}
+            width={72}
+          />
+          <Tooltip content={<ChartTooltip />} />
+          <Legend
+            verticalAlign="bottom"
+            wrapperStyle={CHART_BOTTOM_LEGEND_WRAPPER_STYLE}
+          />
+          <Line
+            type="monotone"
+            dataKey="combinedBalance"
+            name="Combined Balance"
+            stroke="#059669"
+            strokeWidth={3}
+            dot={false}
+          />
+          <Bar
+            dataKey="milestoneCost"
+            name="Milestone Cost"
+            fill="#d946ef"
+            fillOpacity={0.55}
+            barSize={16}
+          />
+          {activeAdvancedResult.shortfall > 0 && (
+            <Line
+              type="monotone"
+              dataKey="shortfall"
+              name="Shortfall"
+              stroke="#dc2626"
+              strokeWidth={2}
+              dot={false}
+              strokeOpacity={0.6}
+            />
+          )}
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+  const userChoiceRows = [
+    {
+      label: "Children",
+      value: `${childCount} ${childCount === 1 ? "child" : "children"}`,
+    },
+    { label: "Starting amount per child", value: formatMoney(startingAmount) },
+    { label: "Car budget", value: formatMoney(carCost) },
+    {
+      label: "Home down payment",
+      value: `${formatMoney(downPayment)} at age ${downPaymentAge}`,
+    },
+    {
+      label: "College cost",
+      value: `${formatMoney(annualTuition + annualBoard)} / year today`,
+    },
+    {
+      label: "Postgrad cost",
+      value: `${formatMoney(annualPostgradTuition + annualPostgradBoard)} / year for ${postgradYears} ${postgradYears === 1 ? "year" : "years"}`,
+    },
+    { label: "529 return", value: formatPercent(plan529Return) },
+    { label: "Brokerage return", value: formatPercent(marketReturn) },
+    {
+      label: "Tax inputs",
+      value: `Age ${advancedCurrentAge}, ${formatMoney(advancedCurrentSalary)} current salary; retire at ${advancedRetirementAge} with ${formatMoney(advancedRetirementSalary)}`,
+    },
+  ];
+  const stepButton = (nextStep, label = "Continue") => (
+    <button
+      type="button"
+      onClick={() => goToStep(nextStep)}
+      className="mt-5 rounded-xl border border-neutral-950 bg-neutral-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-neutral-800"
+    >
+      {label}
+    </button>
+  );
+  return (
+    <CalculatorFrame
+      title="GenWiz"
+      description="A conversational version of the generational savings calculator. Answer one prompt at a time and the plan will build as you go."
+      exportData={{
+        columns: GENERATIONAL_SAVINGS_EXPORT_COLUMNS,
+        rows: result.yearlyAccountRows,
+      }}
+      badge="Beta"
+    >
+      <div className="space-y-4">
+        <GenWizNavigation
+          activeStep={activeStep}
+          totalSteps={maxStep}
+          onBack={goBack}
+        />
+        {activeStep === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28 }}
+          >
+            <Card className="border-neutral-300 shadow-md">
+              <p className="text-sm font-semibold uppercase tracking-wide text-neutral-500">
+                Hi,
+              </p>
+              <h3 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">
+                Let's start analyzing how you can save for your family.
+              </h3>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-neutral-700">
+                I’ll ask for the same information as the generational savings
+                page, but one piece at a time. Nothing has to be perfect yet.
+              </p>
+              <button
+                type="button"
+                onClick={() => goToStep(1)}
+                className="mt-6 rounded-xl border border-neutral-950 bg-neutral-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-neutral-800"
+              >
+                Got it
+              </button>
+            </Card>
+          </motion.div>
+        )}
+        {activeStep === 1 && (
+          <GenWizStep
+            stepNumber={1}
+            isActive
+            title="Children"
+            prompt="First, how many children do you have?"
+          >
+            <RangeInput
+              label="# of children"
+              value={childCount}
+              onChange={setSafeChildCount}
+              min={1}
+              max={6}
+            />
+            {stepButton(2, "Next")}
+          </GenWizStep>
+        )}
+        {activeStep === 2 && (
+          <GenWizStep
+            stepNumber={2}
+            isActive
+            title="Ages and school years"
+            prompt="Got it. Can you tell me more about their ages and current grade levels? This helps me figure out graduation, car, and other timing."
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              {children.map((child, index) => (
+                <div
+                  key={child.id}
+                  className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4"
+                >
+                  <div className="text-sm font-bold text-neutral-950">
+                    Child {index + 1}
+                  </div>
+                  <RangeInput
+                    label="Age"
+                    value={child.age}
+                    onChange={(age) => updateChild(index, { age })}
+                    min={0}
+                    max={24}
+                  />
+                  <SchoolYearSelect
+                    label="Current grade"
+                    value={child.currentGrade}
+                    onChange={(currentGrade) =>
+                      updateChild(index, { currentGrade })
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+            {stepButton(3, "Next")}
+          </GenWizStep>
+        )}
+        {activeStep === 3 && (
+          <GenWizStep
+            stepNumber={3}
+            isActive
+            title="Large non-education milestones"
+            prompt="Before we dig into education, let’s place the big non-school milestones. Do you want to budget for a car or a future home down payment?"
+          >
+            <div className="grid gap-5 md:grid-cols-2">
+              <div>
+                <MoneyInput
+                  label="Car cost"
+                  value={carCost}
+                  onChange={setCarCost}
+                  max={150000}
+                  step={1000}
+                />
+              </div>
+              <div className="space-y-4 md:border-l md:border-neutral-200 md:pl-5">
+                <MoneyInput
+                  label="Home down payment"
+                  value={downPayment}
+                  onChange={setDownPayment}
+                  max={1000000}
+                  step={5000}
+                />
+                <RangeInput
+                  label="Home down payment age"
+                  value={downPaymentAge}
+                  onChange={setDownPaymentAge}
+                  min={25}
+                  max={40}
+                  suffix="yrs"
+                />
+              </div>
+            </div>
+            {stepButton(4, "Next")}
+          </GenWizStep>
+        )}
+        {activeStep === 4 && (
+          <GenWizStep
+            stepNumber={4}
+            isActive
+            title="College costs"
+            prompt="Next, let’s estimate college in today’s dollars. I’ll inflate these costs to each child’s college years."
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              <MoneyInput
+                label="Annual tuition"
+                value={annualTuition}
+                onChange={setAnnualTuition}
+                max={150000}
+                step={1000}
+              />
+              <MoneyInput
+                label="Annual board"
+                value={annualBoard}
+                onChange={setAnnualBoard}
+                max={75000}
+                step={500}
+              />
+              <PercentInput
+                label="Education inflation"
+                value={inflation}
+                onChange={setInflation}
+                min={0}
+                max={12}
+                helperText="Applied to future milestone withdrawals."
+              />
+            </div>
+            {stepButton(5, "Next")}
+          </GenWizStep>
+        )}
+        {activeStep === 5 && (
+          <GenWizStep
+            stepNumber={5}
+            isActive
+            title="Postgrad costs"
+            prompt="If you want to help with graduate school too, add those assumptions here."
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              <MoneyInput
+                label="Annual postgrad tuition"
+                value={annualPostgradTuition}
+                onChange={setAnnualPostgradTuition}
+                max={150000}
+                step={1000}
+              />
+              <MoneyInput
+                label="Annual postgrad board"
+                value={annualPostgradBoard}
+                onChange={setAnnualPostgradBoard}
+                max={75000}
+                step={500}
+              />
+              <RangeInput
+                label="Postgrad length"
+                value={postgradYears}
+                onChange={setPostgradYears}
+                min={1}
+                max={6}
+                suffix="yrs"
+              />
+            </div>
+            {stepButton(6, "Next")}
+          </GenWizStep>
+        )}
+        {activeStep === 6 && (
+          <GenWizStep
+            stepNumber={6}
+            isActive
+            title="Starting amount"
+            prompt="Enter the starting amount you think you can afford per child."
+          >
+            <MoneyInput
+              label="Starting amount per child"
+              value={startingAmount}
+              onChange={setStartingAmount}
+              max={250000}
+              step={1000}
+            />
+            {stepButton(7, "Next")}
+          </GenWizStep>
+        )}
+        {activeStep === 7 && (
+          <GenWizStep
+            stepNumber={7}
+            isActive
+            title="529 and brokerage information"
+            prompt="We'll compare a 529 + brokerage plan with a brokerage-only plan to see which is better for you"
+          >
+            <div className="grid gap-5 lg:grid-cols-2">
+              <div>
+                <PercentInput
+                  label="529 rate of return"
+                  value={plan529Return}
+                  onChange={setPlan529Return}
+                  min={-10}
+                  max={20}
+                  helperText="Used only for 529 account growth."
+                />
+              </div>
+              <div className="space-y-4 lg:border-l lg:border-neutral-200 lg:pl-5">
+                <h3 className="mb-3 text-sm font-bold tracking-tight text-neutral-950">
+                  Brokerage only option
+                </h3>
+                <p className="text-sm leading-6 text-neutral-600">
+                  Uses the same milestone and brokerage tax settings, with the
+                  investment assumptions below.
+                </p>
+                <MarketReturnPicker
+                  value={marketReturn}
+                  onChange={setMarketReturn}
+                />
+              </div>
+            </div>
+            {stepButton(8, "Next")}
+          </GenWizStep>
+        )}
+        {activeStep === 8 && (
+          <GenWizStep
+            stepNumber={8}
+            isActive
+            title="Capital gains tax information"
+            prompt="Enter your age, salary, and retirement information below so we can determine a proper capital gains tax for brokerage withdrawals."
+          >
+            <div className="grid gap-5 md:grid-cols-2">
+              <div className="space-y-4">
+                <RangeInput
+                  label="Current age"
+                  value={advancedCurrentAge}
+                  onChange={setSafeAdvancedCurrentAge}
+                  min={18}
+                  max={90}
+                  suffix="yrs"
+                />
+                <MoneyInput
+                  label="Current salary"
+                  value={advancedCurrentSalary}
+                  onChange={setAdvancedCurrentSalary}
+                  max={1000000}
+                  step={5000}
+                  helperText={`${formatPercent(currentCapitalGainsBracket.rate)} long-term capital gains before retirement`}
+                />
+              </div>
+              <div className="space-y-4">
+                <RangeInput
+                  label="Retirement age"
+                  value={advancedRetirementAge}
+                  onChange={setSafeAdvancedRetirementAge}
+                  min={advancedCurrentAge}
+                  max={95}
+                  suffix="yrs"
+                />
+                <MoneyInput
+                  label="Retirement salary"
+                  value={advancedRetirementSalary}
+                  onChange={setAdvancedRetirementSalary}
+                  max={1000000}
+                  step={5000}
+                  helperText={`${formatPercent(retirementCapitalGainsBracket.rate)} long-term capital gains after retirement`}
+                />
+              </div>
+            </div>
+            {stepButton(9, "Next")}
+          </GenWizStep>
+        )}
+        {activeStep === 9 && (
+          <GenWizStep
+            stepNumber={9}
+            isActive
+            title="Your advanced savings path"
+            prompt="Great! Based on your information, the more effective option is in green below. We've computed the best monthly contribution to meet your needs"
+          >
+            {renderAdvancedResultCards()}
+            <div className="mt-5 border-t border-neutral-200 pt-5">
+              <div className="grid gap-4 md:grid-cols-4">
+                <SmallStat
+                  label="Starting amount per child"
+                  value={formatMoney(startingAmount)}
+                  tone="blue"
+                />
+                <SmallStat
+                  label="Total invested"
+                  value={formatCompactMoney(
+                    activeAdvancedResult.totalContributions,
+                  )}
+                  tone="teal"
+                />
+                <SmallStat
+                  label="Total Investment Growth"
+                  value={formatCompactMoney(activeAdvancedResult.totalInterest)}
+                  tone="green"
+                />
+                <SmallStat
+                  label="Shortfall"
+                  value={formatCompactMoney(activeAdvancedResult.shortfall)}
+                  tone={activeAdvancedResult.shortfall > 0 ? "red" : "neutral"}
+                />
+              </div>
+            </div>
+            <div className="mt-5 rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+              <h3 className="text-sm font-bold tracking-tight text-neutral-950">
+                Your choices
+              </h3>
+              <div className="mt-3 space-y-3">
+                {userChoiceRows.map((row) => (
+                  <div
+                    key={row.label}
+                    className="flex items-start justify-between gap-4 text-sm"
+                  >
+                    <span className="text-neutral-600">{row.label}</span>
+                    <strong className="text-right text-neutral-950">
+                      {row.value}
+                    </strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {renderAdvancedComparisonChart()}
+            <p className="mt-3 text-xs italic leading-5 text-neutral-500">
+              This feature is still in beta, we're attempting to get the values
+              to $0, but there are some rounding errors still visible
+            </p>
+          </GenWizStep>
+        )}
+      </div>
+    </CalculatorFrame>
+  );
+}
+
 function calculateRetirementScenario({
   currentAge,
   retirementAge,
@@ -8354,6 +9279,17 @@ const calculators = [
     component: GenerationalSavingsCalculator,
   },
   {
+    id: "genwiz",
+    name: "GenWiz",
+    subtitle: "Guided family savings planning",
+    shortName: "GenWiz",
+    description:
+      "Walk through the generational savings assumptions one question at a time in a conversational flow.",
+    icon: GiftIcon,
+    component: GenWizCalculator,
+    beta: true,
+  },
+  {
     id: "retirement",
     name: "Retirement Calculator",
     subtitle: "Am I on track to retire?",
@@ -8385,6 +9321,7 @@ const calculatorRouteMap = {
   "home-value": "/home-value-vs-market",
   "college-savings": "/college-savings",
   "generational-savings": "/generational-savings",
+  genwiz: "/genwiz",
 };
 
 const pageCopy = {
@@ -8538,6 +9475,23 @@ const pageCopy = {
       {
         title: "What to verify",
         body: "Review realistic tuition, vehicle, graduate school, housing, gifting, tax, aid, and account-ownership assumptions before using the result for a real plan.",
+      },
+    ],
+  },
+  genwiz: {
+    title: "About GenWiz",
+    body: [
+      "GenWiz is a guided version of the generational savings calculator. It asks for family, milestone, education, and investment assumptions one step at a time.",
+      "The result uses the same core savings model as the generational savings calculator, but presents the inputs as a conversational planning flow.",
+    ],
+    sections: [
+      {
+        title: "How to use it",
+        body: "Answer each prompt in order. Earlier cards stay visible, so you can revise any answer and see the final plan update.",
+      },
+      {
+        title: "What to verify",
+        body: "Review tuition, vehicle, housing, graduate school, and return assumptions before using the result for a real family savings plan.",
       },
     ],
   },

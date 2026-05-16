@@ -11,6 +11,7 @@ export default function sitemap() {
     "/retirement",
     "/college-savings",
     "/generational-savings",
+    "/genwiz",
   ];
 
   return routes.map((route) => ({
