@@ -7242,8 +7242,12 @@ function GenWizNavigation({ activeStep, totalSteps, onBack }) {
           type="button"
           onClick={onBack}
           disabled={activeStep === 0}
-          className="rounded-xl px-3 py-2 text-sm font-bold text-neutral-700 transition hover:bg-neutral-100 hover:text-neutral-950 disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-neutral-700 transition hover:bg-neutral-100 hover:text-neutral-950 disabled:cursor-not-allowed disabled:opacity-40"
         >
+          <span
+            aria-hidden="true"
+            className="h-2.5 w-2.5 rotate-45 border-b-2 border-l-2 border-current"
+          />
           Back
         </button>
       </div>
@@ -9717,7 +9721,7 @@ function LandingPage() {
         className="group relative flex min-h-[330px] w-full max-w-[380px] flex-col overflow-hidden rounded-3xl border border-neutral-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-neutral-400 hover:shadow-md md:w-[calc(50%-10px)] min-[1440px]:w-[calc(25%-15px)]"
       >
         {calculator.beta && (
-          <div className="absolute left-[-38px] top-5 z-10 w-36 -rotate-45 bg-[#d21e7c] py-1 text-center text-[11px] font-black uppercase tracking-widest text-white shadow-sm">
+          <div className="absolute right-[-38px] top-5 z-10 w-36 rotate-45 bg-[#d21e7c] py-1 text-center text-[11px] font-black uppercase tracking-widest text-white shadow-sm">
             Beta
           </div>
         )}
@@ -9810,27 +9814,6 @@ const calculators = [
     component: CollegeSavingsCalculator,
   },
   {
-    id: "generational-savings",
-    name: "Generational Savings",
-    subtitle: "How much should I save for my kids' future?",
-    shortName: "Generational",
-    description:
-      "Plan for a larger family savings path that can cover college, cars, home down payments, and postgraduate degrees for your children.",
-    icon: GiftIcon,
-    component: GenerationalSavingsCalculator,
-  },
-  {
-    id: "genwiz",
-    name: "GenWiz",
-    subtitle: "Guided family savings planning",
-    shortName: "GenWiz",
-    description:
-      "Walk through the generational savings assumptions one question at a time in a conversational flow.",
-    icon: GiftIcon,
-    component: GenWizCalculator,
-    beta: true,
-  },
-  {
     id: "retirement",
     name: "Retirement Calculator",
     subtitle: "Am I on track to retire?",
@@ -9841,6 +9824,16 @@ const calculators = [
     component: RetirementCalculator,
   },
   {
+    id: "generational-savings",
+    name: "Generational Savings",
+    subtitle: "How much should I save for my kids' future?",
+    shortName: "Generational",
+    description:
+      "Plan for a larger family savings path that can cover college, cars, home down payments, and postgraduate degrees for your children.",
+    icon: GiftIcon,
+    component: GenerationalSavingsCalculator,
+  },
+  {
     id: "medical-costs",
     name: "Medical Costs Calculator",
     subtitle: "Self fund care through investment or pay into insurance?",
@@ -9849,6 +9842,17 @@ const calculators = [
       "Compare a yearly invested amount with age-based medical cash costs later in life.",
     icon: MedicalIcon,
     component: MedicalCostsCalculator,
+    beta: true,
+  },
+  {
+    id: "genwiz",
+    name: "GenWiz",
+    subtitle: "Guided family savings planning",
+    shortName: "GenWiz",
+    description:
+      "Walk through the generational savings assumptions one question at a time in a conversational flow.",
+    icon: GiftIcon,
+    component: GenWizCalculator,
     beta: true,
   },
 ];
