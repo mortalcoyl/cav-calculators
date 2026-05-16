@@ -1136,7 +1136,7 @@ function MarketReturnPicker({ value, onChange }) {
   return (
     <div className="space-y-3">
       <PercentInput
-        label="Alternate market return"
+        label="Estimated market return"
         value={value}
         onChange={onChange}
         min={MARKET_RETURN_RANGE.min}
@@ -1363,7 +1363,14 @@ function ExportMenu({ title, exportData }) {
     </div>
   );
 }
-function CalculatorFrame({ title, description, children, exportData, badge }) {
+function CalculatorFrame({
+  title,
+  description,
+  children,
+  exportData,
+  badge,
+  headerClassName = "",
+}) {
   return (
     <motion.div
       key={title}
@@ -1371,14 +1378,16 @@ function CalculatorFrame({ title, description, children, exportData, badge }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
     >
-      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div
+        className={`mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between ${headerClassName}`}
+      >
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-2xl font-semibold tracking-tight text-neutral-950">
               {title}
             </h2>
             {badge && (
-              <span className="rounded-full bg-fuchsia-600 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-white">
+              <span className="rounded-full bg-[#d21e7c] px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-white">
                 {badge}
               </span>
             )}
@@ -6901,7 +6910,7 @@ function GenerationalSavingsCalculator() {
               />
               <div className="flex shrink-0 items-center gap-3">
                 {showAdvancedInvestment && (
-                  <span className="rounded-full bg-fuchsia-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                  <span className="rounded-full bg-[#d21e7c] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
                     Beta
                   </span>
                 )}
@@ -7199,6 +7208,7 @@ function GenerationalSavingsCalculator() {
 function GenWizStep({ children, isActive, stepNumber, title, prompt }) {
   return (
     <motion.div
+      className="mx-auto w-3/4"
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28 }}
@@ -7226,12 +7236,22 @@ function GenWizStep({ children, isActive, stepNumber, title, prompt }) {
 function GenWizNavigation({ activeStep, totalSteps, onBack }) {
   const isIntro = activeStep === 0;
   return (
-    <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+    <div className="mx-auto mb-4 flex w-3/4 items-start gap-4">
+      <div className="pt-1">
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={activeStep === 0}
+          className="rounded-xl px-3 py-2 text-sm font-bold text-neutral-700 transition hover:bg-neutral-100 hover:text-neutral-950 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Back
+        </button>
+      </div>
       <div>
         <div className="text-xs font-bold uppercase tracking-wide text-neutral-400">
           {isIntro ? "Intro" : `Step ${activeStep} of ${totalSteps}`}
         </div>
-        <div className="mt-2 h-2 w-full min-w-[220px] overflow-hidden rounded-full bg-neutral-100 sm:w-72">
+        <div className="mt-2 h-1.5 w-full min-w-[220px] overflow-hidden rounded-full bg-neutral-200 sm:w-72">
           <div
             className="h-full rounded-full bg-neutral-950 transition-all"
             style={{
@@ -7240,20 +7260,17 @@ function GenWizNavigation({ activeStep, totalSteps, onBack }) {
           />
         </div>
       </div>
-      <button
-        type="button"
-        onClick={onBack}
-        disabled={activeStep === 0}
-        className="rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm font-bold text-neutral-800 transition hover:border-neutral-400 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        Back
-      </button>
     </div>
   );
 }
 
 function GenWizCalculator() {
   const [activeStep, setActiveStep] = useState(0);
+  const [hasCompletedGenWiz, setHasCompletedGenWiz] = useCalculatorState(
+    "genwiz",
+    "hasCompleted",
+    false,
+  );
   const [childCount, setChildCount] = useCalculatorState(
     "genwiz",
     "childCount",
@@ -7350,9 +7367,12 @@ function GenWizCalculator() {
     areContributionResultsCalculating,
     setAreContributionResultsCalculating,
   ] = useState(false);
+  const [editingChoice, setEditingChoice] = useState(null);
+  const [calculationInputs, setCalculationInputs] = useState(null);
+  const [childAccountLineVisibility, setChildAccountLineVisibility] = useState(
+    {},
+  );
   const maxStep = 9;
-  const goToStep = (step) => setActiveStep(clampNumber(step, 0, maxStep));
-  const goBack = () => goToStep(activeStep - 1);
   const setSafeChildCount = (nextCount) => {
     const count = clampNumber(parseNumber(nextCount), 1, 6);
     setChildCount(count);
@@ -7415,54 +7435,81 @@ function GenWizCalculator() {
       advancedRetirementSalary,
     ],
   );
-  const deferredGenWizInputs = useDeferredValue(genWizInputs);
+  const confirmCalculationInputs = () => {
+    setCalculationInputs(genWizInputs);
+    setOptimizedAdvancedContribution(null);
+    setBrokerageOnlyMonthlyContributionNeeded(null);
+  };
   useEffect(() => {
-    if (activeStep < 6) return undefined;
+    if (hasCompletedGenWiz) setActiveStep(maxStep);
+  }, [hasCompletedGenWiz, maxStep]);
+  useEffect(() => {
+    if (activeStep === maxStep && !calculationInputs)
+      confirmCalculationInputs();
+  }, [activeStep, calculationInputs, genWizInputs, maxStep]);
+  useEffect(() => {
+    if (activeStep !== maxStep || editingChoice) return;
+    confirmCalculationInputs();
+  }, [activeStep, editingChoice, genWizInputs, maxStep]);
+  const goToStep = (step) => {
+    const safeStep = clampNumber(step, 0, maxStep);
+    if (safeStep === maxStep) {
+      confirmCalculationInputs();
+      setHasCompletedGenWiz(true);
+    }
+    setActiveStep(safeStep);
+  };
+  const goBack = () => goToStep(activeStep - 1);
+  const deferredCalculationInputs = useDeferredValue(calculationInputs);
+  useEffect(() => {
+    if (activeStep < maxStep || !deferredCalculationInputs) return undefined;
     let isCancelled = false;
     setAreContributionResultsCalculating(true);
     const timeout = window.setTimeout(() => {
       const nextOptimizedAdvancedContribution =
         findGenerationalOptimizedAdvancedContributions({
-          children: deferredGenWizInputs.children,
-          startingAmount: deferredGenWizInputs.startingAmount,
-          marketReturn: deferredGenWizInputs.marketReturn,
-          inflation: deferredGenWizInputs.inflation,
-          carCost: deferredGenWizInputs.carCost,
-          annualTuition: deferredGenWizInputs.annualTuition,
-          annualBoard: deferredGenWizInputs.annualBoard,
-          annualPostgradTuition: deferredGenWizInputs.annualPostgradTuition,
-          annualPostgradBoard: deferredGenWizInputs.annualPostgradBoard,
-          postgradYears: deferredGenWizInputs.postgradYears,
-          downPayment: deferredGenWizInputs.downPayment,
-          downPaymentAge: deferredGenWizInputs.downPaymentAge,
-          plan529Return: deferredGenWizInputs.plan529Return,
-          currentAge: deferredGenWizInputs.advancedCurrentAge,
-          currentSalary: deferredGenWizInputs.advancedCurrentSalary,
-          retirementAge: deferredGenWizInputs.advancedRetirementAge,
-          retirementSalary: deferredGenWizInputs.advancedRetirementSalary,
+          children: deferredCalculationInputs.children,
+          startingAmount: deferredCalculationInputs.startingAmount,
+          marketReturn: deferredCalculationInputs.marketReturn,
+          inflation: deferredCalculationInputs.inflation,
+          carCost: deferredCalculationInputs.carCost,
+          annualTuition: deferredCalculationInputs.annualTuition,
+          annualBoard: deferredCalculationInputs.annualBoard,
+          annualPostgradTuition:
+            deferredCalculationInputs.annualPostgradTuition,
+          annualPostgradBoard: deferredCalculationInputs.annualPostgradBoard,
+          postgradYears: deferredCalculationInputs.postgradYears,
+          downPayment: deferredCalculationInputs.downPayment,
+          downPaymentAge: deferredCalculationInputs.downPaymentAge,
+          plan529Return: deferredCalculationInputs.plan529Return,
+          currentAge: deferredCalculationInputs.advancedCurrentAge,
+          currentSalary: deferredCalculationInputs.advancedCurrentSalary,
+          retirementAge: deferredCalculationInputs.advancedRetirementAge,
+          retirementSalary: deferredCalculationInputs.advancedRetirementSalary,
         });
       const nextBrokerageOnlyMonthlyContribution =
         findGenerationalZeroBalanceContribution({
-          children: deferredGenWizInputs.children,
-          startingAmount: deferredGenWizInputs.startingAmount,
-          marketReturn: deferredGenWizInputs.marketReturn,
-          inflation: deferredGenWizInputs.inflation,
-          carCost: deferredGenWizInputs.carCost,
-          annualTuition: deferredGenWizInputs.annualTuition,
-          annualBoard: deferredGenWizInputs.annualBoard,
-          annualPostgradTuition: deferredGenWizInputs.annualPostgradTuition,
-          annualPostgradBoard: deferredGenWizInputs.annualPostgradBoard,
-          postgradYears: deferredGenWizInputs.postgradYears,
-          downPayment: deferredGenWizInputs.downPayment,
-          downPaymentAge: deferredGenWizInputs.downPaymentAge,
+          children: deferredCalculationInputs.children,
+          startingAmount: deferredCalculationInputs.startingAmount,
+          marketReturn: deferredCalculationInputs.marketReturn,
+          inflation: deferredCalculationInputs.inflation,
+          carCost: deferredCalculationInputs.carCost,
+          annualTuition: deferredCalculationInputs.annualTuition,
+          annualBoard: deferredCalculationInputs.annualBoard,
+          annualPostgradTuition:
+            deferredCalculationInputs.annualPostgradTuition,
+          annualPostgradBoard: deferredCalculationInputs.annualPostgradBoard,
+          postgradYears: deferredCalculationInputs.postgradYears,
+          downPayment: deferredCalculationInputs.downPayment,
+          downPaymentAge: deferredCalculationInputs.downPaymentAge,
           advancedTracking: true,
           startingAmount529Pct: 0,
           monthlyContribution529Pct: 0,
-          plan529Return: deferredGenWizInputs.marketReturn,
-          currentAge: deferredGenWizInputs.advancedCurrentAge,
-          currentSalary: deferredGenWizInputs.advancedCurrentSalary,
-          retirementAge: deferredGenWizInputs.advancedRetirementAge,
-          retirementSalary: deferredGenWizInputs.advancedRetirementSalary,
+          plan529Return: deferredCalculationInputs.marketReturn,
+          currentAge: deferredCalculationInputs.advancedCurrentAge,
+          currentSalary: deferredCalculationInputs.advancedCurrentSalary,
+          retirementAge: deferredCalculationInputs.advancedRetirementAge,
+          retirementSalary: deferredCalculationInputs.advancedRetirementSalary,
         });
       if (isCancelled) return;
       setOptimizedAdvancedContribution(nextOptimizedAdvancedContribution);
@@ -7475,9 +7522,10 @@ function GenWizCalculator() {
       isCancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [activeStep, deferredGenWizInputs]);
+  }, [activeStep, deferredCalculationInputs]);
   const result = useMemo(() => {
-    const inputs = deferredGenWizInputs;
+    if (!deferredCalculationInputs) return null;
+    const inputs = deferredCalculationInputs;
     return calculateGenerationalSavingsScenario({
       children: inputs.children,
       startingAmount: inputs.startingAmount,
@@ -7493,9 +7541,10 @@ function GenWizCalculator() {
       downPayment: inputs.downPayment,
       downPaymentAge: inputs.downPaymentAge,
     });
-  }, [deferredGenWizInputs]);
+  }, [deferredCalculationInputs]);
   const brokerageOnlyResult = useMemo(() => {
-    const inputs = deferredGenWizInputs;
+    if (!deferredCalculationInputs) return null;
+    const inputs = deferredCalculationInputs;
     return calculateGenerationalSavingsScenario({
       children: inputs.children,
       startingAmount: inputs.startingAmount,
@@ -7519,11 +7568,15 @@ function GenWizCalculator() {
       retirementAge: inputs.advancedRetirementAge,
       retirementSalary: inputs.advancedRetirementSalary,
     });
-  }, [deferredGenWizInputs]);
+  }, [deferredCalculationInputs]);
   const optimizedAdvancedResult = useMemo(() => {
-    if (!Number.isFinite(optimizedAdvancedContribution?.monthlyContribution))
+    if (
+      !result ||
+      !deferredCalculationInputs ||
+      !Number.isFinite(optimizedAdvancedContribution?.monthlyContribution)
+    )
       return result;
-    const inputs = deferredGenWizInputs;
+    const inputs = deferredCalculationInputs;
     return calculateGenerationalSavingsScenario({
       children: inputs.children,
       startingAmount: inputs.startingAmount,
@@ -7548,11 +7601,15 @@ function GenWizCalculator() {
       retirementAge: inputs.advancedRetirementAge,
       retirementSalary: inputs.advancedRetirementSalary,
     });
-  }, [deferredGenWizInputs, optimizedAdvancedContribution, result]);
+  }, [deferredCalculationInputs, optimizedAdvancedContribution, result]);
   const optimizedBrokerageOnlyResult = useMemo(() => {
-    if (!Number.isFinite(brokerageOnlyMonthlyContributionNeeded))
+    if (
+      !brokerageOnlyResult ||
+      !deferredCalculationInputs ||
+      !Number.isFinite(brokerageOnlyMonthlyContributionNeeded)
+    )
       return brokerageOnlyResult;
-    const inputs = deferredGenWizInputs;
+    const inputs = deferredCalculationInputs;
     return calculateGenerationalSavingsScenario({
       children: inputs.children,
       startingAmount: inputs.startingAmount,
@@ -7579,7 +7636,7 @@ function GenWizCalculator() {
   }, [
     brokerageOnlyMonthlyContributionNeeded,
     brokerageOnlyResult,
-    deferredGenWizInputs,
+    deferredCalculationInputs,
   ]);
   const hasAutomaticOptimizedResults =
     !areContributionResultsCalculating &&
@@ -7593,157 +7650,552 @@ function GenWizCalculator() {
       : hasAutomaticOptimizedResults
         ? "advanced"
         : null;
+  const advancedWinnerLabel =
+    automaticOptimization === "brokerage-only"
+      ? "Brokerage Only Option"
+      : automaticOptimization === "advanced"
+        ? "529+Brokerage Option"
+        : "calculating";
   const activeAdvancedResult =
     automaticOptimization === "brokerage-only"
       ? optimizedBrokerageOnlyResult
       : automaticOptimization === "advanced"
         ? optimizedAdvancedResult
         : result;
+  const childAccountLineColors = [
+    "#f97316",
+    "#0891b2",
+    "#2563eb",
+    "#7c3aed",
+    "#f97316",
+    "#0891b2",
+    "#be123c",
+    "#4d7c0f",
+  ];
+  const accountBalanceLineControls = [
+    {
+      key: "combined529Balance",
+      label: "529 Balance",
+      color: "#7c3aed",
+    },
+    {
+      key: "combinedBrokerageBalance",
+      label: "Brokerage Balance",
+      color: "#2563eb",
+    },
+  ];
+  const childAccountLineControls =
+    activeAdvancedResult?.accounts.map((account, index) => ({
+      key: account.name,
+      label: `${account.name} Balance`,
+      color: childAccountLineColors[index % childAccountLineColors.length],
+    })) ?? [];
+  const chartLineControls = [
+    ...accountBalanceLineControls,
+    ...childAccountLineControls,
+  ];
+  const toggleChildAccountLine = (key) =>
+    setChildAccountLineVisibility((current) => ({
+      ...current,
+      [key]: !current[key],
+    }));
+  const advancedTotalMilestonesPaid =
+    activeAdvancedResult?.rows.reduce(
+      (sum, row) =>
+        sum + (Number.isFinite(row.milestoneCost) ? row.milestoneCost : 0),
+      0,
+    ) ?? 0;
+  const selectedMarketReturnPreset = MARKET_RETURN_PRESETS.find(
+    (preset) => Math.abs(preset.value - marketReturn) < 0.05,
+  );
+  const marketReturnChoiceValue = selectedMarketReturnPreset
+    ? `${formatPercent(marketReturn)} (${selectedMarketReturnPreset.label})`
+    : formatPercent(marketReturn);
+  const render529ReturnPicker = () => {
+    const isAverageSelected = Math.abs(plan529Return - 7) < 0.05;
+    return (
+      <div className="space-y-3">
+        <PercentInput
+          label="529 rate of return"
+          value={plan529Return}
+          onChange={setPlan529Return}
+          min={-10}
+          max={20}
+          helperText="Used only for 529 account growth."
+        />
+        <button
+          type="button"
+          onClick={() => setPlan529Return(7)}
+          className={`w-full rounded-xl border px-3 py-2 text-center text-xs font-bold transition ${
+            isAverageSelected
+              ? "border-neutral-950 bg-neutral-950 text-white"
+              : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-400"
+          }`}
+        >
+          <span className="block">529 10-year average return</span>
+          <span className="mt-0.5 block font-semibold">
+            {formatPercent(7)}
+          </span>
+        </button>
+        <p className="text-xs leading-5 text-neutral-500">
+          10-year average based on approximate annualized historical return
+          average for a moderate risk 529. This is a planning assumption, not a
+          forecast.
+        </p>
+      </div>
+    );
+  };
   const currentCapitalGainsBracket = getCapitalGainsTaxBracket2025(
     advancedCurrentSalary,
   );
   const retirementCapitalGainsBracket = getCapitalGainsTaxBracket2025(
     advancedRetirementSalary,
   );
+  const monthlyContributionCardClass = (isWinner) =>
+    `rounded-xl border p-4 ${
+      isWinner
+        ? "border-2 border-emerald-500 bg-emerald-50 shadow-sm"
+        : "border-neutral-200 bg-neutral-50"
+    }`;
+  const advancedStarting529Pct =
+    Number.isFinite(optimizedAdvancedContribution?.startingAmount529Pct)
+      ? optimizedAdvancedContribution.startingAmount529Pct
+      : 0;
+  const advancedMonthly529Pct =
+    Number.isFinite(optimizedAdvancedContribution?.monthlyContribution529Pct)
+      ? optimizedAdvancedContribution.monthlyContribution529Pct
+      : 0;
+  const advancedStarting529Amount =
+    startingAmount * (advancedStarting529Pct / 100);
+  const advancedStartingBrokerageAmount =
+    startingAmount - advancedStarting529Amount;
+  const advancedMonthly529Amount =
+    Number.isFinite(optimizedAdvancedContribution?.monthlyContribution)
+      ? optimizedAdvancedContribution.monthlyContribution *
+        (advancedMonthly529Pct / 100)
+      : 0;
+  const advancedMonthlyBrokerageAmount =
+    Number.isFinite(optimizedAdvancedContribution?.monthlyContribution)
+      ? optimizedAdvancedContribution.monthlyContribution -
+        advancedMonthly529Amount
+      : 0;
+  const renderAccountBreakdown = (rows) => (
+    <dl className="mt-4 space-y-2 border-t border-neutral-200 pt-4 text-sm">
+      {rows.map((row) => (
+        <div key={row.label} className="flex items-center justify-between gap-4">
+          <dt className="text-neutral-500">{row.label}</dt>
+          <dd className="font-semibold text-neutral-950">{row.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
   const renderAdvancedResultCards = () => (
     <div className="grid gap-5 lg:grid-cols-2">
-      <div
-        className={`rounded-xl border p-4 ${
-          hasAutomaticOptimizedResults &&
-          optimizedAdvancedContribution.monthlyContribution <
-            brokerageOnlyMonthlyContributionNeeded
-            ? "border-emerald-200 bg-emerald-50"
-            : "border-neutral-200 bg-neutral-50"
-        }`}
-      >
-        <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-          Monthly contribution per child needed for 529+Brokerage
-        </div>
-        <div className="mt-2 text-2xl font-bold text-neutral-950">
-          {areContributionResultsCalculating ||
-          !Number.isFinite(optimizedAdvancedContribution?.monthlyContribution)
-            ? "Calculating..."
-            : formatMoney(optimizedAdvancedContribution.monthlyContribution)}
+      <div>
+        <h3 className="mb-3 text-sm font-bold tracking-tight text-neutral-950">
+          529+Brokerage Option
+        </h3>
+        <div
+          className={monthlyContributionCardClass(
+            hasAutomaticOptimizedResults &&
+              optimizedAdvancedContribution.monthlyContribution <
+                brokerageOnlyMonthlyContributionNeeded,
+          )}
+        >
+          <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+            Monthly Contribution needed per child
+          </div>
+          <div className="mt-2 text-2xl font-bold text-neutral-950">
+            {areContributionResultsCalculating ||
+            !Number.isFinite(optimizedAdvancedContribution?.monthlyContribution)
+              ? "Calculating..."
+              : formatMoney(optimizedAdvancedContribution.monthlyContribution)}
+          </div>
+          {renderAccountBreakdown([
+            {
+              label: "Starting amount in brokerage",
+              value: formatMoney(advancedStartingBrokerageAmount),
+            },
+            {
+              label: "Starting amount in 529",
+              value: formatMoney(advancedStarting529Amount),
+            },
+            {
+              label: "Monthly contribution for 529",
+              value: formatMoney(advancedMonthly529Amount),
+            },
+            {
+              label: "Monthly contribution for brokerage",
+              value: formatMoney(advancedMonthlyBrokerageAmount),
+            },
+          ])}
         </div>
       </div>
-      <div
-        className={`rounded-xl border p-4 ${
-          hasAutomaticOptimizedResults &&
-          brokerageOnlyMonthlyContributionNeeded <
-            optimizedAdvancedContribution.monthlyContribution
-            ? "border-emerald-200 bg-emerald-50"
-            : "border-neutral-200 bg-neutral-50"
-        }`}
-      >
-        <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-          Monthly contribution per child needed for Brokerage Only
-        </div>
-        <div className="mt-2 text-2xl font-bold text-neutral-950">
-          {areContributionResultsCalculating ||
-          !Number.isFinite(brokerageOnlyMonthlyContributionNeeded)
-            ? "Calculating..."
-            : formatMoney(brokerageOnlyMonthlyContributionNeeded)}
+      <div>
+        <h3 className="mb-3 text-sm font-bold tracking-tight text-neutral-950">
+          Brokerage Only Option
+        </h3>
+        <div
+          className={monthlyContributionCardClass(
+            hasAutomaticOptimizedResults &&
+              brokerageOnlyMonthlyContributionNeeded <
+                optimizedAdvancedContribution.monthlyContribution,
+          )}
+        >
+          <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+            Monthly Contribution needed per child
+          </div>
+          <div className="mt-2 text-2xl font-bold text-neutral-950">
+            {areContributionResultsCalculating ||
+            !Number.isFinite(brokerageOnlyMonthlyContributionNeeded)
+              ? "Calculating..."
+              : formatMoney(brokerageOnlyMonthlyContributionNeeded)}
+          </div>
+          {renderAccountBreakdown([
+            {
+              label: "Starting amount in brokerage",
+              value: formatMoney(startingAmount),
+            },
+            { label: "Starting amount in 529", value: formatMoney(0) },
+            { label: "Monthly contribution for 529", value: formatMoney(0) },
+            {
+              label: "Monthly contribution for brokerage",
+              value: formatMoney(brokerageOnlyMonthlyContributionNeeded),
+            },
+          ])}
         </div>
       </div>
     </div>
   );
   const renderAdvancedComparisonChart = () => (
     <div className="mt-5 h-[420px] rounded-xl border border-neutral-200 bg-white p-3">
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart
-          data={activeAdvancedResult.rows}
-          margin={{ top: 10, right: 20, left: 0, bottom: 16 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis
-            dataKey="year"
-            type="number"
-            domain={[0, Math.ceil(activeAdvancedResult.horizonYears)]}
-            allowDecimals={false}
-            tick={CHART_AXIS_TICK}
-            tickLine={false}
-            axisLine={false}
-            height={56}
-            label={{
-              ...CHART_AXIS_LABEL,
-              value: "Years from today",
-              position: "insideBottom",
-              offset: 10,
-            }}
-          />
-          <YAxis
-            tick={CHART_AXIS_TICK}
-            tickFormatter={formatCompactMoney}
-            tickLine={false}
-            axisLine={false}
-            width={72}
-          />
-          <Tooltip content={<ChartTooltip />} />
-          <Legend
-            verticalAlign="bottom"
-            wrapperStyle={CHART_BOTTOM_LEGEND_WRAPPER_STYLE}
-          />
-          <Line
-            type="monotone"
-            dataKey="combinedBalance"
-            name="Combined Balance"
-            stroke="#059669"
-            strokeWidth={3}
-            dot={false}
-          />
-          <Bar
-            dataKey="milestoneCost"
-            name="Milestone Cost"
-            fill="#d946ef"
-            fillOpacity={0.55}
-            barSize={16}
-          />
-          {activeAdvancedResult.shortfall > 0 && (
+      {activeAdvancedResult ? (
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart
+            data={activeAdvancedResult.rows}
+            margin={{ top: 10, right: 20, left: 0, bottom: 16 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis
+              dataKey="year"
+              type="number"
+              domain={[0, Math.ceil(activeAdvancedResult.horizonYears)]}
+              allowDecimals={false}
+              tick={CHART_AXIS_TICK}
+              tickLine={false}
+              axisLine={false}
+              height={56}
+              label={{
+                ...CHART_AXIS_LABEL,
+                value: "Years from today",
+                position: "insideBottom",
+                offset: 10,
+              }}
+            />
+            <YAxis
+              tick={CHART_AXIS_TICK}
+              tickFormatter={formatCompactMoney}
+              tickLine={false}
+              axisLine={false}
+              width={72}
+            />
+            <Tooltip content={<ChartTooltip />} />
+            <Legend
+              verticalAlign="bottom"
+              wrapperStyle={CHART_BOTTOM_LEGEND_WRAPPER_STYLE}
+            />
             <Line
               type="monotone"
-              dataKey="shortfall"
-              name="Shortfall"
-              stroke="#dc2626"
-              strokeWidth={2}
+              dataKey="combinedBalance"
+              name="Combined Balance"
+              stroke="#059669"
+              strokeWidth={3}
               dot={false}
-              strokeOpacity={0.6}
             />
-          )}
-        </ComposedChart>
-      </ResponsiveContainer>
+            <Bar
+              dataKey="milestoneCost"
+              name="Milestone Cost"
+              fill="#d946ef"
+              fillOpacity={0.55}
+              barSize={16}
+            />
+            {activeAdvancedResult.shortfall > 0 && (
+              <Line
+                type="monotone"
+                dataKey="shortfall"
+                name="Shortfall"
+                stroke="#dc2626"
+                strokeWidth={2}
+                dot={false}
+                strokeOpacity={0.6}
+              />
+            )}
+            {childAccountLineControls
+              .filter((control) => childAccountLineVisibility[control.key])
+              .map((control) => (
+                <Line
+                  key={control.key}
+                  type="monotone"
+                  dataKey={control.key}
+                  name={control.label}
+                  stroke={control.color}
+                  strokeWidth={2}
+                  dot={false}
+                  strokeOpacity={0.85}
+                />
+              ))}
+            {accountBalanceLineControls
+              .filter((control) => childAccountLineVisibility[control.key])
+              .map((control) => (
+                <Line
+                  key={control.key}
+                  type="monotone"
+                  dataKey={control.key}
+                  name={control.label}
+                  stroke={control.color}
+                  strokeWidth={2}
+                  dot={false}
+                  strokeOpacity={0.85}
+                />
+              ))}
+          </ComposedChart>
+        </ResponsiveContainer>
+      ) : (
+        <div className="flex h-full items-center justify-center text-sm font-semibold text-neutral-500">
+          Calculating your plan...
+        </div>
+      )}
     </div>
   );
   const userChoiceRows = [
     {
+      key: "children",
       label: "Children",
       value: `${childCount} ${childCount === 1 ? "child" : "children"}`,
     },
-    { label: "Starting amount per child", value: formatMoney(startingAmount) },
-    { label: "Car budget", value: formatMoney(carCost) },
     {
+      key: "starting",
+      label: "Starting amount per child",
+      value: formatMoney(startingAmount),
+    },
+    { key: "car", label: "Car budget", value: formatMoney(carCost) },
+    {
+      key: "home",
       label: "Home down payment",
       value: `${formatMoney(downPayment)} at age ${downPaymentAge}`,
     },
     {
+      key: "college",
       label: "College cost",
       value: `${formatMoney(annualTuition + annualBoard)} / year today`,
     },
     {
+      key: "postgrad",
       label: "Postgrad cost",
       value: `${formatMoney(annualPostgradTuition + annualPostgradBoard)} / year for ${postgradYears} ${postgradYears === 1 ? "year" : "years"}`,
     },
-    { label: "529 return", value: formatPercent(plan529Return) },
-    { label: "Brokerage return", value: formatPercent(marketReturn) },
+    { key: "529", label: "529 return", value: formatPercent(plan529Return) },
     {
+      key: "brokerage",
+      label: "Brokerage return",
+      value: marketReturnChoiceValue,
+    },
+    {
+      key: "tax",
       label: "Tax inputs",
       value: `Age ${advancedCurrentAge}, ${formatMoney(advancedCurrentSalary)} current salary; retire at ${advancedRetirementAge} with ${formatMoney(advancedRetirementSalary)}`,
     },
   ];
+  const editingChoiceLabel = userChoiceRows.find(
+    (row) => row.key === editingChoice,
+  )?.label;
+  const renderChoiceEditor = () => {
+    if (editingChoice === "children")
+      return (
+        <div className="space-y-5">
+          <RangeInput
+            label="# of children"
+            value={childCount}
+            onChange={setSafeChildCount}
+            min={1}
+            max={6}
+          />
+          <div className="grid gap-4 md:grid-cols-2">
+            {children.map((child, index) => (
+              <div
+                key={child.id}
+                className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4"
+              >
+                <div className="text-sm font-bold text-neutral-950">
+                  Child {index + 1}
+                </div>
+                <RangeInput
+                  label="Age"
+                  value={child.age}
+                  onChange={(age) => updateChild(index, { age })}
+                  min={0}
+                  max={24}
+                />
+                <SchoolYearSelect
+                  label="Current grade"
+                  value={child.currentGrade}
+                  onChange={(currentGrade) =>
+                    updateChild(index, { currentGrade })
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    if (editingChoice === "starting")
+      return (
+        <MoneyInput
+          label="Starting amount per child"
+          value={startingAmount}
+          onChange={setStartingAmount}
+          max={250000}
+          step={1000}
+        />
+      );
+    if (editingChoice === "car")
+      return (
+        <MoneyInput
+          label="Car cost per child"
+          value={carCost}
+          onChange={setCarCost}
+          max={150000}
+          step={1000}
+        />
+      );
+    if (editingChoice === "home")
+      return (
+        <div className="space-y-4">
+          <MoneyInput
+            label="Home down payment per child"
+            value={downPayment}
+            onChange={setDownPayment}
+            max={1000000}
+            step={5000}
+          />
+          <RangeInput
+            label="Child's age when they receive the down payment"
+            value={downPaymentAge}
+            onChange={setDownPaymentAge}
+            min={25}
+            max={40}
+            suffix="yrs"
+          />
+        </div>
+      );
+    if (editingChoice === "college")
+      return (
+        <div className="grid gap-4 md:grid-cols-2">
+          <MoneyInput
+            label="Annual tuition"
+            value={annualTuition}
+            onChange={setAnnualTuition}
+            max={150000}
+            step={1000}
+          />
+          <MoneyInput
+            label="Annual board"
+            value={annualBoard}
+            onChange={setAnnualBoard}
+            max={75000}
+            step={500}
+          />
+          <PercentInput
+            label="Education inflation"
+            value={inflation}
+            onChange={setInflation}
+            min={0}
+            max={12}
+            helperText="Applied to future milestone withdrawals."
+          />
+        </div>
+      );
+    if (editingChoice === "postgrad")
+      return (
+        <div className="grid gap-4 md:grid-cols-2">
+          <MoneyInput
+            label="Annual postgrad tuition"
+            value={annualPostgradTuition}
+            onChange={setAnnualPostgradTuition}
+            max={150000}
+            step={1000}
+          />
+          <MoneyInput
+            label="Annual postgrad board"
+            value={annualPostgradBoard}
+            onChange={setAnnualPostgradBoard}
+            max={75000}
+            step={500}
+          />
+          <RangeInput
+            label="Postgrad length"
+            value={postgradYears}
+            onChange={setPostgradYears}
+            min={1}
+            max={6}
+            suffix="yrs"
+          />
+        </div>
+      );
+    if (editingChoice === "529")
+      return render529ReturnPicker();
+    if (editingChoice === "brokerage")
+      return (
+        <MarketReturnPicker value={marketReturn} onChange={setMarketReturn} />
+      );
+    if (editingChoice === "tax")
+      return (
+        <div className="grid gap-5 md:grid-cols-2">
+          <div className="space-y-4">
+            <RangeInput
+              label="Current age"
+              value={advancedCurrentAge}
+              onChange={setSafeAdvancedCurrentAge}
+              min={18}
+              max={90}
+              suffix="yrs"
+            />
+            <MoneyInput
+              label="Current salary"
+              value={advancedCurrentSalary}
+              onChange={setAdvancedCurrentSalary}
+              max={1000000}
+              step={5000}
+              helperText={`${formatPercent(currentCapitalGainsBracket.rate)} long-term capital gains before retirement`}
+            />
+          </div>
+          <div className="space-y-4">
+            <RangeInput
+              label="Retirement age"
+              value={advancedRetirementAge}
+              onChange={setSafeAdvancedRetirementAge}
+              min={advancedCurrentAge}
+              max={95}
+              suffix="yrs"
+            />
+            <MoneyInput
+              label="Retirement salary"
+              value={advancedRetirementSalary}
+              onChange={setAdvancedRetirementSalary}
+              max={1000000}
+              step={5000}
+              helperText={`${formatPercent(retirementCapitalGainsBracket.rate)} long-term capital gains after retirement`}
+            />
+          </div>
+        </div>
+      );
+    return null;
+  };
   const stepButton = (nextStep, label = "Continue") => (
     <button
       type="button"
       onClick={() => goToStep(nextStep)}
-      className="mt-5 rounded-xl border border-neutral-950 bg-neutral-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-neutral-800"
+      className="mt-9 rounded-xl border border-neutral-950 bg-neutral-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-neutral-800"
     >
       {label}
     </button>
@@ -7754,9 +8206,10 @@ function GenWizCalculator() {
       description="A conversational version of the generational savings calculator. Answer one prompt at a time and the plan will build as you go."
       exportData={{
         columns: GENERATIONAL_SAVINGS_EXPORT_COLUMNS,
-        rows: result.yearlyAccountRows,
+        rows: result?.yearlyAccountRows ?? [],
       }}
       badge="Beta"
+      headerClassName="mx-auto w-3/4"
     >
       <div className="space-y-4">
         <GenWizNavigation
@@ -7766,6 +8219,7 @@ function GenWizCalculator() {
         />
         {activeStep === 0 && (
           <motion.div
+            className="mx-auto w-3/4"
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.28 }}
@@ -7778,15 +8232,18 @@ function GenWizCalculator() {
                 Let's start analyzing how you can save for your family.
               </h3>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-neutral-700">
-                I’ll ask for the same information as the generational savings
-                page, but one piece at a time. Nothing has to be perfect yet.
+                I’ll ask you for some information about your financial goals for
+                your children, including educational expenses and other
+                milestone gifts like a car or home down payment. We'll then
+                estimate your anticipated returns and taxes to identify a smart
+                saving plan for you and your family.
               </p>
               <button
                 type="button"
                 onClick={() => goToStep(1)}
-                className="mt-6 rounded-xl border border-neutral-950 bg-neutral-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-neutral-800"
+                className="mt-10 rounded-xl border border-neutral-950 bg-neutral-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-neutral-800"
               >
-                Got it
+                Let's go!
               </button>
             </Card>
           </motion.div>
@@ -7849,12 +8306,15 @@ function GenWizCalculator() {
             stepNumber={3}
             isActive
             title="Large non-education milestones"
-            prompt="Before we dig into education, let’s place the big non-school milestones. Do you want to budget for a car or a future home down payment?"
+            prompt="Before we dig into education, let’s budget any large non-school milestones for your children. Do you want to budget for a car or a future home down payment for them?"
           >
             <div className="grid gap-5 md:grid-cols-2">
               <div>
+                <h3 className="mb-3 text-sm font-bold tracking-tight text-neutral-950">
+                  Car purchase for children
+                </h3>
                 <MoneyInput
-                  label="Car cost"
+                  label="Car cost per child"
                   value={carCost}
                   onChange={setCarCost}
                   max={150000}
@@ -7862,15 +8322,18 @@ function GenWizCalculator() {
                 />
               </div>
               <div className="space-y-4 md:border-l md:border-neutral-200 md:pl-5">
+                <h3 className="text-sm font-bold tracking-tight text-neutral-950">
+                  Home Down Payment for children
+                </h3>
                 <MoneyInput
-                  label="Home down payment"
+                  label="Home down payment per child"
                   value={downPayment}
                   onChange={setDownPayment}
                   max={1000000}
                   step={5000}
                 />
                 <RangeInput
-                  label="Home down payment age"
+                  label="Child's age when they receive the down payment"
                   value={downPaymentAge}
                   onChange={setDownPaymentAge}
                   min={25}
@@ -7972,27 +8435,19 @@ function GenWizCalculator() {
             stepNumber={7}
             isActive
             title="529 and brokerage information"
-            prompt="We'll compare a 529 + brokerage plan with a brokerage-only plan to see which is better for you"
+            prompt="The US offers the option of a 529 plan that lets you put in money for educational expenses and withdraw from that account tax free. We'll also examine a pure brokerage account option where you may be better off investing in a brokerage (stock) account. We'll later compare a 529 + brokerage plan with a brokerage-only plan to see which is better for you."
           >
             <div className="grid gap-5 lg:grid-cols-2">
               <div>
-                <PercentInput
-                  label="529 rate of return"
-                  value={plan529Return}
-                  onChange={setPlan529Return}
-                  min={-10}
-                  max={20}
-                  helperText="Used only for 529 account growth."
-                />
+                <h3 className="mb-3 text-sm font-bold tracking-tight text-neutral-950">
+                  529 Information
+                </h3>
+                {render529ReturnPicker()}
               </div>
               <div className="space-y-4 lg:border-l lg:border-neutral-200 lg:pl-5">
                 <h3 className="mb-3 text-sm font-bold tracking-tight text-neutral-950">
-                  Brokerage only option
+                  Brokerage information
                 </h3>
-                <p className="text-sm leading-6 text-neutral-600">
-                  Uses the same milestone and brokerage tax settings, with the
-                  investment assumptions below.
-                </p>
                 <MarketReturnPicker
                   value={marketReturn}
                   onChange={setMarketReturn}
@@ -8055,7 +8510,18 @@ function GenWizCalculator() {
             stepNumber={9}
             isActive
             title="Your advanced savings path"
-            prompt="Great! Based on your information, the more effective option is in green below. We've computed the best monthly contribution to meet your needs"
+            prompt={
+              <>
+                Great! Based on your savings, milestone needs, and tax bracket,
+                the more effective option for you is{" "}
+                <strong className="font-bold text-neutral-950">
+                  {advancedWinnerLabel}
+                </strong>
+                . You can still choose the other option if you prefer. The
+                starting amount needed in each account as well as the monthly
+                contributions are below.
+              </>
+            }
           >
             {renderAdvancedResultCards()}
             <div className="mt-5 border-t border-neutral-200 pt-5">
@@ -8068,19 +8534,21 @@ function GenWizCalculator() {
                 <SmallStat
                   label="Total invested"
                   value={formatCompactMoney(
-                    activeAdvancedResult.totalContributions,
+                    activeAdvancedResult?.totalContributions,
                   )}
                   tone="teal"
                 />
                 <SmallStat
                   label="Total Investment Growth"
-                  value={formatCompactMoney(activeAdvancedResult.totalInterest)}
+                  value={formatCompactMoney(
+                    activeAdvancedResult?.totalInterest,
+                  )}
                   tone="green"
                 />
                 <SmallStat
-                  label="Shortfall"
-                  value={formatCompactMoney(activeAdvancedResult.shortfall)}
-                  tone={activeAdvancedResult.shortfall > 0 ? "red" : "neutral"}
+                  label="Total Milestones Paid"
+                  value={formatCompactMoney(advancedTotalMilestonesPaid)}
+                  tone="neutral"
                 />
               </div>
             </div>
@@ -8088,26 +8556,99 @@ function GenWizCalculator() {
               <h3 className="text-sm font-bold tracking-tight text-neutral-950">
                 Your choices
               </h3>
-              <div className="mt-3 space-y-3">
+              <div className="mt-3 divide-y divide-neutral-200 overflow-hidden rounded-xl border border-neutral-200 bg-white">
                 {userChoiceRows.map((row) => (
-                  <div
-                    key={row.label}
-                    className="flex items-start justify-between gap-4 text-sm"
+                  <button
+                    key={row.key}
+                    type="button"
+                    onClick={() => setEditingChoice(row.key)}
+                    className="grid w-full grid-cols-1 gap-x-3 gap-y-1 py-3 pl-5 pr-3 text-left text-sm transition hover:bg-neutral-50 sm:grid-cols-[12rem_1fr]"
                   >
-                    <span className="text-neutral-600">{row.label}</span>
-                    <strong className="text-right text-neutral-950">
+                    <span className="font-bold text-neutral-950">
+                      {row.label}:
+                    </span>
+                    <span className="text-left text-neutral-700">
                       {row.value}
-                    </strong>
-                  </div>
+                    </span>
+                  </button>
                 ))}
               </div>
             </div>
+            <p className="mt-5 text-sm leading-6 text-neutral-600">
+              The graph below shows the total account balance and withdrawals
+              over time. The sawtooth appearance is created by the payments for
+              the milestones and then the account balance increasing with
+              interest after the withdrawal.
+            </p>
             {renderAdvancedComparisonChart()}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {chartLineControls.map((control) => {
+                const isVisible = Boolean(
+                  childAccountLineVisibility[control.key],
+                );
+                return (
+                  <button
+                    key={control.key}
+                    type="button"
+                    onClick={() => toggleChildAccountLine(control.key)}
+                    aria-pressed={isVisible}
+                    className={`inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-bold transition ${
+                      isVisible
+                        ? "border-neutral-300 bg-neutral-100 text-neutral-950"
+                        : "border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300"
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: control.color }}
+                    />
+                    {control.label}
+                  </button>
+                );
+              })}
+            </div>
             <p className="mt-3 text-xs italic leading-5 text-neutral-500">
               This feature is still in beta, we're attempting to get the values
               to $0, but there are some rounding errors still visible
             </p>
           </GenWizStep>
+        )}
+        {editingChoice && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8">
+            <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl">
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wide text-neutral-400">
+                    Edit choice
+                  </div>
+                  <h3 className="mt-1 text-lg font-semibold tracking-tight text-neutral-950">
+                    {editingChoiceLabel}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingChoice(null)}
+                  className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-bold text-neutral-800 transition hover:border-neutral-400"
+                >
+                  Close
+                </button>
+              </div>
+              {renderChoiceEditor()}
+              <div className="mt-6 flex justify-end border-t border-neutral-200 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeStep === maxStep) confirmCalculationInputs();
+                    setEditingChoice(null);
+                  }}
+                  className="rounded-xl border border-neutral-950 bg-neutral-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-neutral-800"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </CalculatorFrame>
@@ -9176,7 +9717,7 @@ function LandingPage() {
         className="group relative flex min-h-[330px] w-full max-w-[380px] flex-col overflow-hidden rounded-3xl border border-neutral-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-neutral-400 hover:shadow-md md:w-[calc(50%-10px)] min-[1440px]:w-[calc(25%-15px)]"
       >
         {calculator.beta && (
-          <div className="absolute left-[-38px] top-5 z-10 w-36 -rotate-45 bg-fuchsia-600 py-1 text-center text-[11px] font-black uppercase tracking-widest text-white shadow-sm">
+          <div className="absolute left-[-38px] top-5 z-10 w-36 -rotate-45 bg-[#d21e7c] py-1 text-center text-[11px] font-black uppercase tracking-widest text-white shadow-sm">
             Beta
           </div>
         )}
@@ -9501,7 +10042,7 @@ function SeoPageCopy({ pageId }) {
   const copy = pageCopy[pageId] || pageCopy.landing;
   return (
     <section
-      className="mt-36 border-t border-neutral-200 pt-4"
+      className="mt-auto border-t border-neutral-200 pt-4"
       aria-labelledby="calculator-page-copy-title"
     >
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
@@ -9574,7 +10115,7 @@ export default function CombinedRealEstateCalculatorsPreview({
             </Link>
           </div>
           <nav
-            className="hidden flex-wrap gap-4 lg:flex"
+            className="hidden max-w-full flex-nowrap gap-1 overflow-x-auto pb-1 lg:flex"
             aria-label="Calculator selector"
           >
             {calculators.map((calculator) => {
@@ -9586,11 +10127,11 @@ export default function CombinedRealEstateCalculatorsPreview({
                   href={calculatorRouteMap[calculator.id]}
                   className={
                     active
-                      ? "flex items-center gap-2 rounded-xl bg-neutral-950 px-3 py-2 text-sm font-semibold text-white transition"
-                      : "flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-neutral-600 transition hover:bg-neutral-100 hover:text-neutral-950"
+                      ? "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl bg-neutral-950 px-2.5 py-1.5 text-xs font-semibold text-white transition"
+                      : "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-2.5 py-1.5 text-xs font-semibold text-neutral-600 transition hover:bg-neutral-100 hover:text-neutral-950"
                   }
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-3.5 w-3.5" />
                   {calculator.shortName}
                 </Link>
               );
@@ -9642,8 +10183,10 @@ export default function CombinedRealEstateCalculatorsPreview({
             )}
           </div>
         </header>
-        <div className="pb-10">
-          {ActiveComponent ? <ActiveComponent /> : <LandingPage />}
+        <div className="flex flex-1 flex-col pb-6">
+          <div className="mb-36">
+            {ActiveComponent ? <ActiveComponent /> : <LandingPage />}
+          </div>
           <SeoPageCopy pageId={activeCalculator} />
         </div>
         <Disclaimer />
