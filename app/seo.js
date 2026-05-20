@@ -6,7 +6,7 @@ const socialImage = {
   alt: "Financial Calculators for real estate, vehicle, and investment planning",
 };
 
-export function socialMetadata(title, description, path = "/") {
+export function socialMetadata(title, description, path = "/", image = socialImage) {
   const url = path;
 
   return {
@@ -20,13 +20,13 @@ export function socialMetadata(title, description, path = "/") {
       siteName,
       type: "website",
       locale: "en_US",
-      images: [socialImage],
+      images: [image],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [socialImage.url],
+      images: [image.url],
     },
   };
 }

@@ -1180,7 +1180,7 @@ function MarketReturnPicker({ value, onChange }) {
     </div>
   );
 }
-function SmallStat({ label, value, tone = "neutral", detail }) {
+function SmallStat({ label, value, tone = "neutral", detail, alignValue = false }) {
   const toneClass =
     tone === "green"
       ? "border-emerald-200 bg-emerald-50"
@@ -1196,11 +1196,25 @@ function SmallStat({ label, value, tone = "neutral", detail }) {
                 ? "border-fuchsia-200 bg-fuchsia-50"
                 : "border-neutral-200 bg-neutral-50";
   return (
-    <div className={`rounded-2xl border p-4 ${toneClass}`}>
-      <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+    <div
+      className={`rounded-2xl border p-4 ${
+        alignValue ? "flex min-h-28 flex-col" : ""
+      } ${toneClass}`}
+    >
+      <div
+        className={`text-xs font-medium uppercase tracking-wide text-neutral-500 ${
+          alignValue ? "min-h-8" : ""
+        }`}
+      >
         {label}
       </div>
-      <div className="mt-2 text-xl font-bold text-neutral-950">{value}</div>
+      <div
+        className={`text-xl font-bold text-neutral-950 ${
+          alignValue ? "mt-auto" : "mt-2"
+        }`}
+      >
+        {value}
+      </div>
       {detail && (
         <div className="mt-1 text-sm font-semibold leading-5 text-neutral-700">
           {detail}
@@ -7208,7 +7222,7 @@ function GenerationalSavingsCalculator() {
 function GenWizStep({ children, isActive, stepNumber, title, prompt }) {
   return (
     <motion.div
-      className="mx-auto w-3/4"
+      className="mx-auto w-full sm:w-3/4"
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28 }}
@@ -7236,7 +7250,7 @@ function GenWizStep({ children, isActive, stepNumber, title, prompt }) {
 function GenWizNavigation({ activeStep, totalSteps, onBack }) {
   const isIntro = activeStep === 0;
   return (
-    <div className="mx-auto mb-4 flex w-3/4 items-start gap-4">
+    <div className="mx-auto mb-4 flex w-full items-start gap-4 sm:w-3/4">
       <div className="pt-1">
         <button
           type="button"
@@ -8213,7 +8227,7 @@ function GenWizCalculator() {
         rows: result?.yearlyAccountRows ?? [],
       }}
       badge="Beta"
-      headerClassName="mx-auto w-3/4"
+      headerClassName="mx-auto w-full sm:w-3/4"
     >
       <div className="space-y-4">
         <GenWizNavigation
@@ -8223,7 +8237,7 @@ function GenWizCalculator() {
         />
         {activeStep === 0 && (
           <motion.div
-            className="mx-auto w-3/4"
+            className="mx-auto w-full sm:w-3/4"
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.28 }}
@@ -8529,11 +8543,12 @@ function GenWizCalculator() {
           >
             {renderAdvancedResultCards()}
             <div className="mt-5 border-t border-neutral-200 pt-5">
-              <div className="grid gap-4 md:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
                 <SmallStat
                   label="Starting amount per child"
                   value={formatMoney(startingAmount)}
                   tone="blue"
+                  alignValue
                 />
                 <SmallStat
                   label="Total invested"
@@ -8541,6 +8556,7 @@ function GenWizCalculator() {
                     activeAdvancedResult?.totalContributions,
                   )}
                   tone="teal"
+                  alignValue
                 />
                 <SmallStat
                   label="Total Investment Growth"
@@ -8548,11 +8564,27 @@ function GenWizCalculator() {
                     activeAdvancedResult?.totalInterest,
                   )}
                   tone="green"
+                  alignValue
                 />
                 <SmallStat
-                  label="Total Milestones Paid"
+                  label="Milestone Costs"
                   value={formatCompactMoney(advancedTotalMilestonesPaid)}
                   tone="neutral"
+                  alignValue
+                />
+                <SmallStat
+                  label="Brokerage Taxes"
+                  value={formatCompactMoney(
+                    activeAdvancedResult?.totalBrokerageWithdrawalTax,
+                  )}
+                  tone="amber"
+                  alignValue
+                />
+                <SmallStat
+                  label="Ending Balance"
+                  value={formatCompactMoney(activeAdvancedResult?.endingBalance)}
+                  tone={activeAdvancedResult?.shortfall > 0 ? "amber" : "green"}
+                  alignValue
                 />
               </div>
             </div>
@@ -8583,6 +8615,11 @@ function GenWizCalculator() {
               over time. The sawtooth appearance is created by the payments for
               the milestones and then the account balance increasing with
               interest after the withdrawal.
+            </p>
+            <p className="mt-3 text-sm leading-6 text-neutral-600">
+              Total invested plus investment growth is split across milestone
+              costs, brokerage taxes, any ending balance, and any unpaid
+              shortfall.
             </p>
             {renderAdvancedComparisonChart()}
             <div className="mt-3 flex flex-wrap gap-2">

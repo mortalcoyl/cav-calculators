@@ -5,11 +5,17 @@ import { socialMetadata } from "../seo";
 const title = "GenWiz";
 const description =
   "Answer conversational prompts to build a generational savings plan for children, education, cars, home down payments, and family investment goals.";
+const socialImage = {
+  url: "/genwiz-og.png",
+  width: 1200,
+  height: 630,
+  alt: "GenWiz generational savings planning wizard for family financial goals",
+};
 
 export const metadata = {
   title,
   description,
-  ...socialMetadata(title, description, "/genwiz"),
+  ...socialMetadata(title, description, "/genwiz", socialImage),
 };
 
 export default function Page() {
